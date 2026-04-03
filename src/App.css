@@ -1,0 +1,1103 @@
+:root {
+  --waica-red: #d71920;
+  --waica-red-dark: #b1141a;
+  --waica-charcoal: #141414;
+  --waica-ink: #242424;
+  --waica-stone: #595959;
+  --waica-fog: #eef0f3;
+  --waica-paper: #ffffff;
+  --waica-line: #d7dbe1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Tahoma", sans-serif;
+  color: var(--waica-ink);
+  background: radial-gradient(circle at 20% -20%, #ffffff 0%, #f2f3f6 50%, #ebedf1 100%);
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 22px;
+  gap: 24px;
+  position: relative;
+}
+
+.app-container::before,
+.app-container::after {
+  content: "";
+  position: fixed;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(70px);
+  opacity: 0.12;
+}
+
+.app-container::before {
+  top: -140px;
+  left: -100px;
+  background: var(--waica-red);
+}
+
+.app-container::after {
+  right: -140px;
+  bottom: -120px;
+  background: #9ba3af;
+}
+
+.app-container > * {
+  position: relative;
+}
+
+.header {
+  background: linear-gradient(125deg, #ffffff 0%, #f4f5f7 60%, #eceff3 100%);
+  color: var(--waica-ink);
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--waica-line);
+  box-shadow: 0 12px 32px rgba(20, 20, 20, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  animation: riseIn 0.45s ease;
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--waica-line);
+  box-shadow: 0 6px 16px rgba(20, 20, 20, 0.1);
+}
+
+.brand-copy h1 {
+  margin: 0;
+  font-size: clamp(1.3rem, 2vw, 1.9rem);
+  letter-spacing: 0.01em;
+  color: var(--waica-charcoal);
+}
+
+.brand-copy p {
+  margin: 5px 0 0;
+  font-size: 0.92rem;
+  color: var(--waica-stone);
+}
+
+.brand-tag {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--waica-red);
+  background: #ffeef0;
+  border: 1px solid #ffd4d8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.data-section,
+.analysis-section {
+  background: var(--waica-paper);
+  border-radius: 14px;
+  padding: 24px;
+  border: 1px solid var(--waica-line);
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.06);
+  animation: riseIn 0.45s ease;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: var(--waica-charcoal);
+  border-bottom: 3px solid var(--waica-red);
+  padding-bottom: 8px;
+  display: inline-block;
+}
+
+.data-controls {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.form-group,
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label,
+.control-group label {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #393939;
+}
+
+.form-group input,
+.form-group select,
+.control-group select,
+.control-group input {
+  padding: 10px 12px;
+  border: 1px solid #cfd5dd;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #fcfdff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.control-group select:focus,
+.control-group input:focus {
+  outline: none;
+  border-color: var(--waica-red);
+  box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.14);
+}
+
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--waica-red) 0%, var(--waica-red-dark) 100%);
+  color: white;
+  box-shadow: 0 6px 12px rgba(215, 25, 32, 0.16);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(215, 25, 32, 0.2);
+}
+
+.btn-icon {
+  background: #f4f5f8;
+  border: 1px solid #d8dde5;
+  color: #383838;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  background: #fff4f5;
+  color: var(--waica-red);
+  border-color: #f2b2b6;
+}
+
+.viewport-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+.viewport-item {
+  background: white;
+  border: 1px solid var(--waica-line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  transition: box-shadow 0.2s ease;
+  min-width: 0;
+}
+
+.viewport-item:hover {
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+}
+
+.viewport-item.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  z-index: 1000;
+  border: none;
+}
+
+.viewport-item.fullscreen .viewport-header {
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+}
+
+.viewport-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #fafafb 0%, #f2f4f7 100%);
+  border-bottom: 1px solid var(--waica-line);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.viewport-title {
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--waica-charcoal);
+}
+
+.viewport-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.viewport-content {
+  padding: 16px;
+  max-height: 600px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.viewport-item.fullscreen .viewport-content {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.analysis-section {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+}
+
+.analysis-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid var(--waica-line);
+  padding-right: 16px;
+}
+
+.analysis-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.data-table thead {
+  background: #f4f6f9;
+  border-bottom: 2px solid #dfe3ea;
+  position: sticky;
+  top: 0;
+}
+
+.data-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 700;
+  color: #2b2b2b;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #edf0f4;
+  color: #444;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #fcfcfd;
+}
+
+.data-table tbody tr:hover {
+  background: #fff7f8;
+}
+
+.data-table tbody tr:last-child {
+  border-top: 2px solid #e2e6ec;
+  font-weight: 700;
+  background-color: #f1f4f7;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.datum-negative {
+  color: #b42318;
+}
+
+.datum-positive {
+  color: #027a48;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--waica-red);
+  font-size: 0.9rem;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #dfe4eb;
+  border-top-color: var(--waica-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #dfe4eb;
+  border-top-color: var(--waica-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-indicator {
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin: 12px 0;
+  border-left: 4px solid var(--waica-red);
+  background-color: #fff5f6;
+  font-size: 0.88rem;
+}
+
+.loading-indicator.success {
+  border-left-color: #16a34a;
+  background-color: #f2fcf5;
+}
+
+.loading-indicator.error {
+  border-left-color: #b42318;
+  background-color: #fff4f2;
+}
+
+.loading-content {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.loading-animation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 40px;
+}
+
+.status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-icon.success {
+  background-color: #16a34a;
+  color: white;
+}
+
+.status-icon.error {
+  background-color: #d92d20;
+  color: white;
+}
+
+.loading-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.loading-status {
+  font-weight: 700;
+  color: #2d2d2d;
+  margin-bottom: 4px;
+}
+
+.loading-status.success {
+  color: #166534;
+}
+
+.loading-status.error {
+  color: #b42318;
+}
+
+.loading-details {
+  font-size: 0.82rem;
+  color: #616a77;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.loading-indicator.success .loading-details {
+  color: #15803d;
+}
+
+.loading-indicator.error .loading-details {
+  color: #b42318;
+}
+
+.loading-error {
+  color: #b42318;
+  font-weight: 600;
+  margin-top: 6px;
+  padding: 8px;
+  background-color: rgba(180, 35, 24, 0.08);
+  border-radius: 8px;
+  word-break: break-word;
+}
+
+.error-message {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #be123c;
+  font-size: 0.86rem;
+  margin: 8px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  color: #8a8f98;
+  font-size: 0.9rem;
+}
+
+.empty-state-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+  .analysis-section {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-controls {
+    border-right: none;
+    border-bottom: 1px solid var(--waica-line);
+    padding-right: 0;
+    padding-bottom: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 14px;
+    gap: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .brand-wrap {
+    width: 100%;
+  }
+
+  .brand-logo {
+    width: 66px;
+    height: 66px;
+  }
+
+  .brand-tag {
+    align-self: flex-start;
+  }
+
+  .data-section,
+  .analysis-section {
+    padding: 16px;
+  }
+
+  .data-controls {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .data-table {
+    font-size: 0.76rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 7px;
+  }
+}
+
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.56);
+  z-index: 999;
+}
+
+.excel-export-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.58);
+  backdrop-filter: blur(3px);
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.excel-export-panel {
+  width: min(980px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid #d9dee6;
+  background: linear-gradient(145deg, #ffffff 0%, #f6f7fa 100%);
+  box-shadow: 0 25px 65px rgba(20, 20, 20, 0.28);
+  animation: riseIn 0.24s ease;
+}
+
+.excel-export-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+
+.excel-export-panel-header h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  color: #1f2937;
+}
+
+.excel-export-panel-header p {
+  margin: 6px 0 0;
+  color: #5c6674;
+  font-size: 0.9rem;
+}
+
+.excel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.excel-filter-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #cfe2ff;
+  background: #f3f8ff;
+  cursor: pointer;
+}
+
+.excel-filter-toggle:hover {
+  background: #e6f0ff;
+}
+
+.excel-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #d4d9e1;
+  background: #fff;
+  color: #293242;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.excel-close-btn:hover {
+  background: #ffecee;
+  border-color: #f2b4bc;
+  color: #b1141a;
+}
+
+.excel-export-form {
+  padding: 10px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.excel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.excel-filter-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cfe2ff;
+  background: #f3f8ff;
+  color: #1f3f66;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.excel-filter-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.excel-export-progress {
+  border: 1px solid #ffd9a8;
+  background: linear-gradient(135deg, #fff8ec 0%, #fff2db 100%);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #7c4a03;
+  font-size: 0.84rem;
+}
+
+.excel-export-trigger-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.excel-inline-progress-right,
+.excel-export-footer-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.excel-inline-progress-track {
+  width: 150px;
+  height: 8px;
+  border-radius: 999px;
+  background: #dce3eb;
+  overflow: hidden;
+}
+
+.excel-inline-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0284c7 0%, #22c55e 100%);
+  transition: width 0.28s ease;
+}
+
+.excel-inline-progress-fraction {
+  font-size: 0.75rem;
+  color: #1f3f66;
+  font-weight: 700;
+  min-width: 36px;
+}
+
+.excel-export-status-under-btn {
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.excel-export-status-under-btn.running {
+  border: 1px solid #cfe2ff;
+  background: #f3f8ff;
+  color: #1f3f66;
+}
+
+.excel-export-status-under-btn.success {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.excel-export-status-under-btn.error {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.excel-export-progress-label {
+  font-size: 0.75rem;
+  color: #475569;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.excel-filter-panel {
+  border: 1px solid #d7e3f4;
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.excel-filter-panel h4 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: #1f3f66;
+}
+
+.excel-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.excel-filter-add-btn {
+  height: 40px;
+}
+
+.excel-filter-status-bar {
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.excel-filter-status-empty {
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.excel-filter-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excel-filter-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #dbe2ea;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  color: #1f2937;
+}
+
+.excel-filter-status-pill button {
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.excel-category-card {
+  background: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #dce3eb;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.excel-category-headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.excel-category-headline h4 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.excel-category-headline span {
+  font-size: 0.82rem;
+  color: #5c6674;
+  font-weight: 600;
+}
+
+.excel-selection-meter {
+  width: 100%;
+  height: 8px;
+  background: #dce3eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.excel-selection-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d71920 0%, #f08a5d 50%, #f7b267 100%);
+  transition: width 0.24s ease;
+}
+
+.excel-selected-strip {
+  min-height: 46px;
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excel-empty-pill,
+.excel-selected-pill {
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.excel-empty-pill {
+  background: #edf2f7;
+  color: #6b7280;
+  border: 1px dashed #c7d0da;
+}
+
+.excel-selected-pill {
+  background: #fff1f2;
+  border: 1px solid #ffd4d8;
+  color: #9f1239;
+  font-weight: 600;
+}
+
+.excel-category-actions {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+}
+
+.excel-category-actions input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccd5df;
+  font-size: 0.88rem;
+}
+
+.excel-category-grid {
+  margin-top: 12px;
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.excel-category-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.excel-category-item.checked {
+  background: #fff6ea;
+  border-color: #fdba74;
+}
+
+.excel-category-empty {
+  margin: 8px 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.excel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid #e1e7ef;
+  padding-top: 14px;
+}
+
+.excel-footer-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.excel-footer-status-text {
+  font-size: 0.82rem;
+  color: #526074;
+}
+
+.excel-footer-status-text.success {
+  color: #166534;
+  font-weight: 700;
+}
+
+.excel-footer-status-text.error {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.excel-footer-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.excel-secondary-btn {
+  background: #eef2f7;
+  color: #293242;
+  border: 1px solid #d5dde7;
+}
+
+.excel-secondary-btn:hover {
+  background: #e4eaf1;
+}
+
+.excel-draft-banner {
+  border: 1px solid #bcd7f5;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+  color: #1f3f66;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.83rem;
+}
+
+.excel-draft-meta {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: #44648c;
+}
+
+@media (max-width: 768px) {
+  .excel-export-overlay {
+    padding: 10px;
+  }
+
+  .excel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .excel-category-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .excel-export-trigger-row {
+    flex-direction: column;
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .excel-inline-progress-right {
+    width: 100%;
+  }
+
+  .excel-inline-progress-track {
+    flex: 1;
+    width: auto;
+  }
+
+  .excel-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .excel-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .excel-footer-actions {
+    width: 100%;
+  }
+
+  .excel-footer-actions .btn {
+    flex: 1;
+  }
+}
