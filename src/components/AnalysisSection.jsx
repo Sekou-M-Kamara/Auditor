@@ -140,10 +140,20 @@ function AnalysisSection({ sourceData }) {
     }
   }, []);
 
+  const isSameFilter = useCallback((a, b) => {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length < 3 || b.length < 3) return false;
+    return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+  }, []);
+
   const handleAddFilter = (filterFromViewport) => {
     // If called from Viewport with a filter array, use it directly
     if (filterFromViewport && Array.isArray(filterFromViewport)) {
-      setFilters([...filters, filterFromViewport]);
+      setFilters((prev) => {
+        if (prev.some((existingFilter) => isSameFilter(existingFilter, filterFromViewport))) {
+          return prev;
+        }
+        return [...prev, filterFromViewport];
+      });
       setFilterChangeSource('viewport'); // Mark as Viewport change
       return;
     }
@@ -151,7 +161,13 @@ function AnalysisSection({ sourceData }) {
     // Otherwise, use local state (called from left panel)
     if (newFilterHeader && newFilterItem) {
       const convertedValue = convertFilterValue(newFilterHeader, newFilterItem);
-      setFilters([...filters, [newFilterHeader, convertedValue, newFilterOperation]]);
+      const nextFilter = [newFilterHeader, convertedValue, newFilterOperation];
+      setFilters((prev) => {
+        if (prev.some((existingFilter) => isSameFilter(existingFilter, nextFilter))) {
+          return prev;
+        }
+        return [...prev, nextFilter];
+      });
       setFilterChangeSource('leftpanel'); // Mark as left panel change
       setNewFilterHeader('');
       setNewFilterItem('');
@@ -346,9 +362,13 @@ function AnalysisSection({ sourceData }) {
 
   const handleAddViewFilter = (filterFromPanel) => {
     if (!filterFromPanel || !Array.isArray(filterFromPanel)) return;
-    const nextFilters = [...viewFilters, filterFromPanel];
-    setViewFilters(nextFilters);
-    handleApplyViewFilters(nextFilters);
+    setViewFilters((prev) => {
+      const nextFilters = prev.some((existingFilter) => isSameFilter(existingFilter, filterFromPanel))
+        ? prev
+        : [...prev, filterFromPanel];
+      handleApplyViewFilters(nextFilters);
+      return nextFilters;
+    });
   };
 
   const handleRemoveViewFilter = (index) => {

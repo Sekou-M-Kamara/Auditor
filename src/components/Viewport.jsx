@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 function Viewport({ 
   title, 
@@ -33,6 +33,18 @@ function Viewport({
   const [newResultFilterHeader, setNewResultFilterHeader] = useState('');
   const [newResultFilterItem, setNewResultFilterItem] = useState('');
   const [newResultFilterOperation, setNewResultFilterOperation] = useState('Equal');
+  const [sourceFilterPanelPosition, setSourceFilterPanelPosition] = useState({ top: 70, right: 20 });
+  const [viewFilterPanelPosition, setViewFilterPanelPosition] = useState({ top: 70, right: 20 });
+  const [draggingPanel, setDraggingPanel] = useState(null);
+  const [panelStackOrder, setPanelStackOrder] = useState(['source', 'view']);
+  const panelOverlapOffset = { top: 22, right: 16 };
+  const previousVisibilityRef = useRef({ source: false, view: false });
+  const activePanels = React.useMemo(() => {
+    const visible = [];
+    if (showFilterConfigInFullscreen && sourceData) visible.push('source');
+    if (showResultFilterConfigInFullscreen && Array.isArray(resultData)) visible.push('view');
+    return panelStackOrder.filter((panel) => visible.includes(panel));
+  }, [panelStackOrder, showFilterConfigInFullscreen, showResultFilterConfigInFullscreen, sourceData, resultData]);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -54,6 +66,50 @@ function Viewport({
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const getPanelLayer = (panelType) => {
+    const index = activePanels.indexOf(panelType);
+    return index === -1 ? 0 : index;
+  };
+
+  const bringPanelToFront = (panelType) => {
+    setPanelStackOrder((prev) => {
+      const ordered = prev.filter((panel) => panel !== panelType);
+      return [...ordered, panelType];
+    });
+  };
+
+  useEffect(() => {
+    const sourceVisible = Boolean(showFilterConfigInFullscreen && sourceData);
+    const viewVisible = Boolean(showResultFilterConfigInFullscreen && Array.isArray(resultData));
+
+    if (sourceVisible && !previousVisibilityRef.current.source) {
+      bringPanelToFront('source');
+    }
+
+    if (viewVisible && !previousVisibilityRef.current.view) {
+      bringPanelToFront('view');
+    }
+
+    previousVisibilityRef.current = {
+      source: sourceVisible,
+      view: viewVisible
+    };
+  }, [showFilterConfigInFullscreen, showResultFilterConfigInFullscreen, sourceData, resultData]);
+
+  const getDisplayedPanelPosition = (panelType, basePosition) => {
+    const layer = getPanelLayer(panelType);
+    return {
+      top: basePosition.top + (layer * panelOverlapOffset.top),
+      right: basePosition.right + (layer * panelOverlapOffset.right)
+    };
+  };
+
+  const getPanelZIndex = (panelType) => {
+    const layer = getPanelLayer(panelType);
+    const dragBoost = draggingPanel === panelType ? 300 : 0;
+    return 3000 + (layer * 30) + dragBoost;
   };
 
   // Get unique values for selected header (preserve types from source)
@@ -142,10 +198,59 @@ function Viewport({
     return isResultNumericColumn(newResultFilterHeader) ? ['Equal', 'Atlest', 'Atmost'] : ['Equal'];
   }, [newResultFilterHeader, isResultNumericColumn, resultHeaders]);
 
-  const handleRefreshAnalysis = () => {
-    if (onRunAnalysis) {
-      onRunAnalysis();
-    }
+  const clampPanelPosition = (position) => {
+    const panelWidth = 400;
+    const topMax = Math.max(window.innerHeight - 80, 0);
+    const rightMax = Math.max(window.innerWidth - panelWidth, 0);
+    return {
+      top: Math.min(Math.max(position.top, 0), topMax),
+      right: Math.min(Math.max(position.right, 0), rightMax)
+    };
+  };
+
+  const startPanelDrag = (panelType, event) => {
+    event.preventDefault();
+    const initialPosition = panelType === 'source' ? sourceFilterPanelPosition : viewFilterPanelPosition;
+    const layer = getPanelLayer(panelType);
+    const displayedInitialPosition = {
+      top: initialPosition.top + (layer * panelOverlapOffset.top),
+      right: initialPosition.right + (layer * panelOverlapOffset.right)
+    };
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startTop = displayedInitialPosition.top;
+    const startRight = displayedInitialPosition.right;
+
+    setDraggingPanel(panelType);
+
+    const onMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      const nextDisplayedPosition = clampPanelPosition({
+        top: startTop + deltaY,
+        right: startRight - deltaX
+      });
+      const nextPosition = {
+        top: nextDisplayedPosition.top - (layer * panelOverlapOffset.top),
+        right: nextDisplayedPosition.right - (layer * panelOverlapOffset.right)
+      };
+
+      if (panelType === 'source') {
+        setSourceFilterPanelPosition(nextPosition);
+      } else {
+        setViewFilterPanelPosition(nextPosition);
+      }
+    };
+
+    const onMouseUp = () => {
+      bringPanelToFront(panelType);
+      setDraggingPanel(null);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   };
 
   // Convert filter value to appropriate type based on column
@@ -206,7 +311,7 @@ function Viewport({
               borderRadius: '4px',
               border: '2px solid #ffc107'
             }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>🔍 Active Filters:</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>🔍 Active Source Filter:</span>
               {filters.map((filter, idx) => (
                 <div
                   key={idx}
@@ -280,7 +385,7 @@ function Viewport({
               borderRadius: '4px',
               border: '2px solid #ffc107'
             }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>🔍 Active Filters:</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#856404' }}>🔍 Active View Filter:</span>
               {resultFilters.map((filter, idx) => (
                 <div
                   key={`${filter[0]}-${filter[1]}-${idx}`}
@@ -410,8 +515,8 @@ function Viewport({
         {isFullscreen && showFilterConfigInFullscreen && sourceData && (
           <div style={{
             position: 'fixed',
-            top: '70px',
-            right: '20px',
+            top: `${getDisplayedPanelPosition('source', sourceFilterPanelPosition).top}px`,
+            right: `${getDisplayedPanelPosition('source', sourceFilterPanelPosition).right}px`,
             width: '400px',
             maxHeight: '70vh',
             overflowY: 'auto',
@@ -420,12 +525,25 @@ function Viewport({
             border: '2px solid #28a745',
             borderRadius: '6px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: '1000'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4 style={{ margin: 0, color: '#28a745' }}>Add Filter</h4>
+            zIndex: getPanelZIndex('source')
+          }}
+          onMouseDown={() => bringPanelToFront('source')}
+          >
+            <div
+              onMouseDown={(e) => startPanelDrag('source', e)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '10px',
+                cursor: 'grab',
+                userSelect: 'none'
+              }}
+            >
+              <h4 style={{ margin: 0, color: '#28a745' }}>Add Source Filter</h4>
               <button
                 onClick={() => setShowFilterConfigInFullscreen(false)}
+                onMouseDown={(e) => e.stopPropagation()}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -534,22 +652,6 @@ function Viewport({
               >
                 Add Filter
               </button>
-
-              <button
-                onClick={handleRefreshAnalysis}
-                disabled={!onRunAnalysis || resultLoading}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: onRunAnalysis && !resultLoading ? 'pointer' : 'not-allowed',
-                  fontSize: '12px'
-                }}
-              >
-                Refresh Analysis
-              </button>
             </div>
           </div>
         )}
@@ -557,8 +659,8 @@ function Viewport({
         {isFullscreen && showResultFilterConfigInFullscreen && Array.isArray(resultData) && (
           <div style={{
             position: 'fixed',
-            top: '70px',
-            right: '440px',
+            top: `${getDisplayedPanelPosition('view', viewFilterPanelPosition).top}px`,
+            right: `${getDisplayedPanelPosition('view', viewFilterPanelPosition).right}px`,
             width: '400px',
             maxHeight: '70vh',
             overflowY: 'auto',
@@ -567,12 +669,25 @@ function Viewport({
             border: '2px solid #28a745',
             borderRadius: '6px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: '1000'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4 style={{ margin: 0, color: '#28a745' }}>Add Filter</h4>
+            zIndex: getPanelZIndex('view')
+          }}
+          onMouseDown={() => bringPanelToFront('view')}
+          >
+            <div
+              onMouseDown={(e) => startPanelDrag('view', e)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '10px',
+                cursor: 'grab',
+                userSelect: 'none'
+              }}
+            >
+              <h4 style={{ margin: 0, color: '#28a745' }}>Add View Filter</h4>
               <button
                 onClick={() => setShowResultFilterConfigInFullscreen(false)}
+                onMouseDown={(e) => e.stopPropagation()}
                 style={{
                   background: 'none',
                   border: 'none',

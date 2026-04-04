@@ -45,4 +45,29 @@ def viewFilter(viewTable, filterBundle=None):
                 continue
             filtered_table = filtered_table[numeric_series <= target_value]
 
+    # Format output columns
+    ratio_columns = [
+        "Loss Ratio",
+        "Commission Ratio",
+        "Net Management Expense Ratio",
+        "Net Technical Margin Ratio",
+        "Net Retro Expense Ratio",
+        "Combined Ratio"
+    ]
+    
+    currency_columns = [
+        "Net Premium",
+        "Net Incurred Claim",
+        "Net Commission",
+        "Net Technical Margin"
+    ]
+    
+    # Apply currency formatting (negative in parentheses)
+    filtered_table[currency_columns] = filtered_table[currency_columns].map(
+        lambda x: f"({abs(x):,.2f})" if x < 0 else f"{x:,.2f}"
+    )
+    
+    # Apply percentage formatting
+    filtered_table[ratio_columns] = filtered_table[ratio_columns].map(lambda x: f"{x:.2%}")
+
     return filtered_table

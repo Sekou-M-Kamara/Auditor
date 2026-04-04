@@ -421,6 +421,8 @@ def run_view_filter():
 
         request_data = request.get_json() or {}
         filter_bundle = request_data.get('filterBundle', [])
+        print(f"filter_bundle {filter_bundle}\n\n\n")
+        # print(f"analysis table {analysis_cache['latestResultTableManipulation']}")
 
         if not isinstance(filter_bundle, list):
             return jsonify({
@@ -430,7 +432,8 @@ def run_view_filter():
             }), 400
 
         filtered_df = viewFilter(analysis_cache['latestResultTableManipulation'].copy(), filter_bundle)
-        filtered_view_df = analysis_cache['latestResultTableView'].loc[filtered_df.index].copy()
+        filtered_view_df = filtered_df.copy()
+        # filtered_view_df = analysis_cache['latestResultTableView'].loc[filtered_df.index].copy()
 
         return jsonify({
             'status': 'success',
