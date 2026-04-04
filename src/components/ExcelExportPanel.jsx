@@ -18,7 +18,7 @@ function ExcelExportPanel({
   const [formData, setFormData] = useState({
     dataFieldHeader: 'Retained Amt Base',
     grossDataFieldHeader: 'Detail Amount (Base)',
-    netManagementExpenseRatio: 0.12,
+    netManagementExpenseRatio: 12,
     oneSheet: true,
     workbookName: '',
     categoryBundle: []
@@ -114,12 +114,13 @@ function ExcelExportPanel({
   const handleSubmit = (event) => {
     event.preventDefault();
     if (exportLoading) return;
+    const ratioValue = parseFloat(formData.netManagementExpenseRatio);
     onSubmit({
       analysisType,
       category_header: formData.categoryBundle[0] || '',
       data_field_header: formData.dataFieldHeader,
       gross_data_field_header: formData.grossDataFieldHeader,
-      net_management_expense_ratio: Number(formData.netManagementExpenseRatio),
+      net_management_expense_ratio: isNaN(ratioValue) ? 0 : ratioValue / 100,
       oneSheet: formData.oneSheet,
       workbook_name: formData.workbookName?.trim() || '',
       categoryBundle: formData.categoryBundle,
@@ -214,12 +215,12 @@ function ExcelExportPanel({
             </div>
 
             <div className="control-group">
-              <label htmlFor="export-management-ratio">Net Management Expense Ratio</label>
+              <label htmlFor="export-management-ratio">Net Management Expense Ratio (%)</label>
               <input
                 id="export-management-ratio"
                 type="number"
                 min="0"
-                max="1"
+                max="100"
                 step="0.01"
                 value={formData.netManagementExpenseRatio}
                 onChange={(event) => updateFormValue('netManagementExpenseRatio', event.target.value)}

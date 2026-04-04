@@ -6,7 +6,7 @@ function RatioAnalysisForm({ onSubmit, sourceData }) {
     codeHeader: 'Entry Code',
     dataFieldHeader: 'Retained Amt Base',
     grossDataFieldHeader: 'Detail Amount (Base)',
-    netManagementExpenseRatio: 0.12
+    netManagementExpenseRatio: 12
   });
 
   // Extract available headers from source data
@@ -25,7 +25,11 @@ function RatioAnalysisForm({ onSubmit, sourceData }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    const ratioValue = parseFloat(formData.netManagementExpenseRatio);
+    onSubmit({
+      ...formData,
+      netManagementExpenseRatio: isNaN(ratioValue) ? 0 : ratioValue / 100
+    });
   };
 
   return (
@@ -82,7 +86,7 @@ function RatioAnalysisForm({ onSubmit, sourceData }) {
       </div>
 
       <div className="control-group">
-        <label htmlFor="netManagementExpenseRatio">Net Management Expense Ratio:</label>
+        <label htmlFor="netManagementExpenseRatio">Net Management Expense Ratio (%):</label>
         <input
           type="number"
           id="netManagementExpenseRatio"
@@ -91,7 +95,7 @@ function RatioAnalysisForm({ onSubmit, sourceData }) {
           onChange={handleInputChange}
           step="0.01"
           min="0"
-          max="1"
+          max="100"
         />
       </div>
 

@@ -24,14 +24,17 @@ function AnalysisSection({ sourceData }) {
   const [lastFormParams, setLastFormParams] = useState(null);
   // Session memory: thresholds persist during the session
   const [thresholds, setThresholds] = useState({
-    'Loss Ratio': { condition: 'atmost', value: '0.75' },
-    'Commission Ratio': { condition: 'atmost', value: '0.20' },
-    'Combined Ratio': { condition: 'atmost', value: '1.00' },
-    'Net Technical Margin Ratio': { condition: 'atleast', value: '0.05' }
+    'Loss Ratio': { condition: 'atleast', value: '0.75' },
+    'Commission Ratio': { condition: 'atleast', value: '0.20' },
+    'Net Management Expense Ratio': { condition: 'atleast', value: '0.12' },
+    'Net Technical Margin Ratio': { condition: 'atmost', value: '0.05' },
+    'Net Retro Expense Ratio': { condition: 'atleast', value: '' },
+    'Combined Ratio': { condition: 'atleast', value: '1.00' }
   });
 
   // Filter state: array of [header, item, operation]
   const [filters, setFilters] = useState([]);
+  const [exportFilters, setExportFilters] = useState([]);
   const [filterChangeSource, setFilterChangeSource] = useState(null); // Track if change is from Viewport
   const [newFilterHeader, setNewFilterHeader] = useState('');
   const [newFilterItem, setNewFilterItem] = useState('');
@@ -261,14 +264,46 @@ function AnalysisSection({ sourceData }) {
     'Combined Ratio'
   ];
 
+  const getDefaultThresholdCondition = (ratioName) => (
+    ratioName === 'Net Technical Margin Ratio' ? 'atmost' : 'atleast'
+  );
+
+  const decimalRatioToPercentDisplay = (decimalValue) => {
+    const parsed = parseFloat(decimalValue);
+    if (isNaN(parsed)) return '';
+    const percentValue = parsed * 100;
+    return Number.isInteger(percentValue) ? String(percentValue) : percentValue.toString();
+  };
+
+  const percentInputToDecimalRatio = (percentInput) => {
+    if (percentInput === '') return '';
+    const parsed = parseFloat(percentInput);
+    if (isNaN(parsed)) return '';
+    const decimalValue = parsed / 100;
+    return decimalValue.toString();
+  };
+
   const handleThresholdChange = (ratioName, field, value) => {
     setThresholds(prev => ({
       ...prev,
       [ratioName]: {
         ...prev[ratioName],
-        [field]: value
+        [field]: field === 'value' ? percentInputToDecimalRatio(value) : value
       }
     }));
+  };
+
+  const handleAddExportFilter = (filterFromPanel) => {
+    if (!filterFromPanel || !Array.isArray(filterFromPanel)) return;
+    setExportFilters((prev) => [...prev, filterFromPanel]);
+  };
+
+  const handleRemoveExportFilter = (index) => {
+    setExportFilters((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearAllExportFilters = () => {
+    setExportFilters([]);
   };
 
   const handleExcelExportDraft = async (payload) => {
@@ -407,7 +442,12 @@ function AnalysisSection({ sourceData }) {
 
           <div className="excel-export-trigger-row">
             <button
-              onClick={() => setShowExcelExportPanel(true)}
+              onClick={() => {
+                if (exportFilters.length === 0 && filters.length > 0) {
+                  setExportFilters([...filters]);
+                }
+                setShowExcelExportPanel(true);
+              }}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#6c757d',
@@ -463,7 +503,7 @@ function AnalysisSection({ sourceData }) {
                   
                   <div style={{ marginBottom: '8px' }}>
                     <select
-                      value={thresholds[ratioName]?.condition || 'atmost'}
+                      value={thresholds[ratioName]?.condition || getDefaultThresholdCondition(ratioName)}
                       onChange={(e) => handleThresholdChange(ratioName, 'condition', e.target.value)}
                       style={{
                         padding: '6px',
@@ -482,7 +522,8 @@ function AnalysisSection({ sourceData }) {
                   <input
                     type="number"
                     step="0.01"
-                    value={thresholds[ratioName]?.value || '0'}
+                    min="0"
+                    value={decimalRatioToPercentDisplay(thresholds[ratioName]?.value)}
                     onChange={(e) => handleThresholdChange(ratioName, 'value', e.target.value)}
                     style={{
                       padding: '6px',
@@ -490,12 +531,12 @@ function AnalysisSection({ sourceData }) {
                       border: '1px solid #ccc',
                       width: '100%'
                     }}
-                    placeholder="Enter threshold value"
+                    placeholder="Enter threshold (%)"
                   />
 
                   <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
                     <div>Cells will turn red if value</div>
-                    <div>{thresholds[ratioName]?.condition === 'atleast' ? 'is less than' : thresholds[ratioName]?.condition === 'atmost' ? 'is greater than' : 'does not equal'} {thresholds[ratioName]?.value}</div>
+                    <div>{thresholds[ratioName]?.condition === 'atleast' ? 'is greater than or equal to' : thresholds[ratioName]?.condition === 'atmost' ? 'is less than or equal to' : 'is equal to'} {decimalRatioToPercentDisplay(thresholds[ratioName]?.value)}%</div>
                   </div>
                 </div>
               ))}
@@ -726,13 +767,13 @@ function AnalysisSection({ sourceData }) {
         availableHeaders={availableHeaders}
         sourceData={sourceData}
         analysisType={analysisType}
-        currentFilters={filters}
+        currentFilters={exportFilters}
         exportLoading={excelExportLoading}
         exportProgress={excelExportProgress}
         exportStatus={excelExportStatus}
-        onAddFilter={handleAddFilter}
-        onRemoveFilter={handleRemoveFilter}
-        onClearAllFilters={handleClearAllFilters}
+        onAddFilter={handleAddExportFilter}
+        onRemoveFilter={handleRemoveExportFilter}
+        onClearAllFilters={handleClearAllExportFilters}
       />
     </>
   );

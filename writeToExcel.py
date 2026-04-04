@@ -35,6 +35,79 @@ def excelSheetsGenerator(analysisType,
     ratio_fmt = workBook.add_format({'num_format': '0.00%;(0.00%)'})
     threshold_alert_fmt = workBook.add_format({'bg_color': '#F8D7DA', 'font_color': '#842029'})
 
+    def excelFormatter(ws, wsRC=None, table_columns=None):
+
+        if wsRC is None:
+            wsRC = []
+
+        if analysisType == "performance":
+
+            if not wsRC:
+                number_fmt = workBook.add_format({'num_format': '#,##0.00;(#,##0.00)'})
+                ratio_fmt = workBook.add_format({'num_format': '0.00%;(0.00%)'})
+
+                excelNumberColumnIndex = range(3, 7)
+                excelRatioColumnIndex = range(7, 13)
+                valueWidth = 17
+                headerContentsWidth = 25
+
+                for index in excelNumberColumnIndex:
+                    ws.set_column((index - 1), (index - 1), valueWidth, number_fmt)
+                for index in excelRatioColumnIndex:
+                    ws.set_column((index - 1), (index - 1), headerContentsWidth, ratio_fmt)
+            else:
+                ratio_columns = [
+                "Loss Ratio",
+                "Commission Ratio",
+                "Net Management Expense Ratio",
+                "Net Technical Margin Ratio",
+                "Net Retro Expense Ratio",
+                "Combined Ratio"
+                ]
+
+                ratio_column_lookup = {}
+                if table_columns:
+                    for offset, column_name in enumerate(table_columns):
+                        ratio_column_lookup[column_name] = wsRC[2] + offset
+
+                for col_offset, col_name in enumerate(ratio_columns):
+                    threshold_config = thresholds.get(col_name)
+                    if not isinstance(threshold_config, dict):
+                        continue
+
+                    condition_name = str(threshold_config.get('condition', '')).lower()
+                    raw_value = threshold_config.get('value', None)
+                    try:
+                        threshold_value = float(raw_value)
+                    except (TypeError, ValueError):
+                        continue
+
+                    if condition_name == 'atleast':
+                        criteria = '>='
+                    elif condition_name == 'atmost':
+                        criteria = '<='
+                    elif condition_name == 'equal':
+                        criteria = '=='
+                    else:
+                        continue
+
+                    ratio_col_index = ratio_column_lookup.get(col_name, 6 + col_offset)
+                    if ratio_col_index < wsRC[2] or ratio_col_index > wsRC[3]:
+                        continue
+
+                    ws.conditional_format(
+                        wsRC[0],
+                        ratio_col_index,
+                        wsRC[1],
+                        ratio_col_index,
+                        {
+                            'type': 'cell',
+                            'criteria': criteria,
+                            'value': threshold_value,
+                            'format': threshold_alert_fmt
+                        }
+                    )
+            
 
     previousTableLength = 0
 
@@ -69,62 +142,7 @@ def excelSheetsGenerator(analysisType,
             "columns": columns
         })
 
-        # Apply number formats and threshold highlighting to data rows (excluding table header row).
-        data_start_row = start_row + 1
-        data_end_row = end_row
-
-        numeric_columns = ["Net Premium", "Net Incurred Claim", "Net Commission", "Net Technical Margin"]
-        ratio_columns = [
-            "Loss Ratio",
-            "Commission Ratio",
-            "Net Management Expense Ratio",
-            "Net Technical Margin Ratio",
-            "Net Retro Expense Ratio",
-            "Combined Ratio"
-        ]
-
-        for col_name in numeric_columns:
-            if col_name in table.columns:
-                col_idx = start_col + table.columns.get_loc(col_name)
-                ws.set_column(col_idx, col_idx, 16, number_fmt)
-
-        for col_name in ratio_columns:
-            if col_name in table.columns:
-                col_idx = start_col + table.columns.get_loc(col_name)
-                ws.set_column(col_idx, col_idx, 16, ratio_fmt)
-
-                threshold_config = thresholds.get(col_name)
-                if not isinstance(threshold_config, dict):
-                    continue
-
-                condition_name = str(threshold_config.get('condition', '')).lower()
-                raw_value = threshold_config.get('value', None)
-                try:
-                    threshold_value = float(raw_value)
-                except (TypeError, ValueError):
-                    continue
-
-                if condition_name == 'atleast':
-                    criteria = '<'
-                elif condition_name == 'atmost':
-                    criteria = '>'
-                elif condition_name == 'equal':
-                    criteria = '!='
-                else:
-                    continue
-
-                ws.conditional_format(
-                    data_start_row,
-                    col_idx,
-                    data_end_row,
-                    col_idx,
-                    {
-                        'type': 'cell',
-                        'criteria': criteria,
-                        'value': threshold_value,
-                        'format': threshold_alert_fmt
-                    }
-                )
+        excelFormatter(ws, [start_row, end_row - 1, start_col, end_col], table.columns.tolist())
 
     def build_result_table(category_header_name):
         kwargs = {
@@ -145,6 +163,7 @@ def excelSheetsGenerator(analysisType,
 
     if oneSheet:
         workSheet = workBook.add_worksheet(str(analysisType)[:31] or "Analysis")
+        excelFormatter(workSheet)
         for category_header_name in categoryBundle:
             resultTable = build_result_table(category_header_name)
             addTable(workSheet, resultTable, category_header_name)
@@ -172,6 +191,7 @@ def excelSheetsGenerator(analysisType,
 
         for category_header_name in categoryBundle:
             workSheet = workBook.add_worksheet(unique_sheet_name(category_header_name))
+            excelFormatter(workSheet)
             resultTable = build_result_table(category_header_name)
             addTable(workSheet, resultTable)
 
