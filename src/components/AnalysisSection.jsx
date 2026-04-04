@@ -21,6 +21,9 @@ function AnalysisSection({ sourceData }) {
     state: 'idle',
     message: ''
   });
+  const [viewFilters, setViewFilters] = useState([]);
+  const [viewFilterLoading, setViewFilterLoading] = useState(false);
+  const [viewFilteredResults, setViewFilteredResults] = useState(null);
   const [lastFormParams, setLastFormParams] = useState(null);
   // Session memory: thresholds persist during the session
   const [thresholds, setThresholds] = useState({
@@ -106,6 +109,37 @@ function AnalysisSection({ sourceData }) {
     return getOperationsForColumn(newFilterHeader);
   }, [newFilterHeader, getOperationsForColumn]);
 
+  const getResultSignature = useCallback((resultObj) => {
+    if (!resultObj || !Array.isArray(resultObj.data)) return '';
+    const columns = resultObj?.metadata?.columns || [];
+    const params = resultObj?.metadata?.params || {};
+    return JSON.stringify({
+      analysisType,
+      rows: resultObj.data.length,
+      columns,
+      params
+    });
+  }, [analysisType]);
+
+  const getViewFilterCacheStore = useCallback(() => {
+    try {
+      const raw = window.sessionStorage.getItem('resultViewFilterCacheStore');
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }, []);
+
+  const setViewFilterCacheStore = useCallback((store) => {
+    try {
+      window.sessionStorage.setItem('resultViewFilterCacheStore', JSON.stringify(store));
+    } catch (_) {
+      // Ignore storage issues silently to avoid blocking UX.
+    }
+  }, []);
+
   const handleAddFilter = (filterFromViewport) => {
     // If called from Viewport with a filter array, use it directly
     if (filterFromViewport && Array.isArray(filterFromViewport)) {
@@ -156,6 +190,8 @@ function AnalysisSection({ sourceData }) {
 
       const result = await response.json();
       setAnalysisResults(result);
+      setViewFilteredResults(null);
+      setViewFilters([]);
     } catch (err) {
       setResultError(err.message);
       console.error('Analysis error:', err);
@@ -216,6 +252,8 @@ function AnalysisSection({ sourceData }) {
 
       const result = await response.json();
       setAnalysisResults(result);
+      setViewFilteredResults(null);
+      setViewFilters([]);
     } catch (err) {
       setResultError(err.message);
       console.error('Analysis error:', err);
@@ -304,6 +342,89 @@ function AnalysisSection({ sourceData }) {
 
   const handleClearAllExportFilters = () => {
     setExportFilters([]);
+  };
+
+  const handleAddViewFilter = (filterFromPanel) => {
+    if (!filterFromPanel || !Array.isArray(filterFromPanel)) return;
+    const nextFilters = [...viewFilters, filterFromPanel];
+    setViewFilters(nextFilters);
+    handleApplyViewFilters(nextFilters);
+  };
+
+  const handleRemoveViewFilter = (index) => {
+    const nextFilters = viewFilters.filter((_, i) => i !== index);
+    setViewFilters(nextFilters);
+    if (nextFilters.length === 0) {
+      setViewFilteredResults(null);
+      return;
+    }
+    handleApplyViewFilters(nextFilters);
+  };
+
+  const handleClearAllViewFilters = () => {
+    // Keep cached filtered view in session storage; only clear active filter application.
+    setViewFilters([]);
+    setViewFilteredResults(null);
+  };
+
+  const handleApplyViewFilters = async (filtersToApply = viewFilters) => {
+    if (!analysisResults || !Array.isArray(analysisResults.data) || filtersToApply.length === 0) return;
+
+    const signature = getResultSignature(analysisResults);
+    if (!signature) return;
+
+    const cacheStore = getViewFilterCacheStore();
+    const currentFiltersKey = JSON.stringify(filtersToApply);
+
+    setViewFilterLoading(true);
+    try {
+      const response = await fetch('/api/view-filter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filterBundle: filtersToApply
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to apply view filter');
+      }
+
+      const filteredPayload = await response.json();
+      const filteredResult = {
+        ...analysisResults,
+        data: filteredPayload?.data || [],
+        metadata: {
+          ...(analysisResults.metadata || {}),
+          rows: Array.isArray(filteredPayload?.data) ? filteredPayload.data.length : 0,
+          columns: filteredPayload?.metadata?.columns || analysisResults?.metadata?.columns || []
+        }
+      };
+
+      setViewFilteredResults(filteredResult);
+      cacheStore[signature] = {
+        filtersKey: currentFiltersKey,
+        filters: filtersToApply,
+        filteredResult
+      };
+      setViewFilterCacheStore(cacheStore);
+    } catch (err) {
+      setResultError(err.message || 'View filter error');
+    } finally {
+      setViewFilterLoading(false);
+    }
+  };
+
+  const handleRestoreViewFilters = () => {
+    const signature = getResultSignature(analysisResults);
+    if (!signature) return;
+
+    const cacheStore = getViewFilterCacheStore();
+    const cacheEntry = cacheStore[signature];
+    if (!cacheEntry || !cacheEntry.filteredResult) return;
+
+    setViewFilters(Array.isArray(cacheEntry.filters) ? cacheEntry.filters : []);
+    setViewFilteredResults(cacheEntry.filteredResult);
   };
 
   const handleExcelExportDraft = async (payload) => {
@@ -403,6 +524,14 @@ function AnalysisSection({ sourceData }) {
 
   return (
     <>
+      {(() => {
+        const displayedResults = viewFilteredResults || analysisResults;
+        const displayedResultData = Array.isArray(displayedResults?.data) ? displayedResults.data : [];
+        const displayedResultHeaders = displayedResults?.metadata?.columns || (displayedResultData[0] ? Object.keys(displayedResultData[0]) : []);
+        const baseResultData = Array.isArray(analysisResults?.data) ? analysisResults.data : [];
+        const baseResultHeaders = analysisResults?.metadata?.columns || (baseResultData[0] ? Object.keys(baseResultData[0]) : []);
+
+        return (
       <div className="analysis-section">
       <div className="analysis-controls">
         <h3 className="section-title" style={{ display: 'block', margin: 0 }}>Analysis</h3>
@@ -739,16 +868,25 @@ function AnalysisSection({ sourceData }) {
             title="Performance Analysis Results" 
             loading={resultLoading} 
             filters={filters}
+            resultFilters={viewFilters}
             sourceData={sourceData}
+            resultData={baseResultData}
             availableHeaders={availableHeaders}
+            resultHeaders={baseResultHeaders}
             onRunAnalysis={handleRunAnalysis}
             resultLoading={resultLoading}
             onAddFilter={handleAddFilter}
             onRemoveFilter={handleRemoveFilter}
             onClearAllFilters={handleClearAllFilters}
+            onAddResultFilter={handleAddViewFilter}
+            onRemoveResultFilter={handleRemoveViewFilter}
+            onClearAllResultFilters={handleClearAllViewFilters}
+            onApplyResultFilters={handleApplyViewFilters}
+            onRestoreResultFilters={handleRestoreViewFilters}
+            resultFilterLoading={viewFilterLoading}
           >
-            {analysisResults ? (
-              <AnalysisResultsComponent results={analysisResults} thresholds={thresholds} />
+            {displayedResults ? (
+              <AnalysisResultsComponent results={displayedResults} thresholds={thresholds} />
             ) : (
               <div className="empty-state">
                 <div className="empty-state-icon">📈</div>
@@ -759,6 +897,9 @@ function AnalysisSection({ sourceData }) {
         </ul>
       </div>
       </div>
+
+        );
+      })()}
 
       <ExcelExportPanel
         isOpen={showExcelExportPanel}

@@ -49,7 +49,6 @@ def performanceAnalysis(
     gross_data_field_header="Detail Amount (Base)",
     net_management_expense_ratio=0.12,
     filterArray=None,
-    excelOn = False
 ):
     
     # DEBUG: Print received filters
@@ -96,9 +95,6 @@ def performanceAnalysis(
         """Apply filter condition to all three tables"""
         nonlocal premiumTable, claimTable, commissionTable
         
-        # DEBUG: Print filter being applied
-        print(f"Applying filter: Label='{filterLabel}', Value='{filterValue}', Operation='{operation}'")
-        print(f"  Before filter - premiumTable rows: {len(premiumTable)}, claimTable rows: {len(claimTable)}, commissionTable rows: {len(commissionTable)}")
         
         if operation == "Equal":
             premiumTable = premiumTable[premiumTable[filterLabel] == filterValue]
@@ -197,33 +193,31 @@ def performanceAnalysis(
     
     # Convert to DataFrame
     resultTable = pd.DataFrame(resultTableDictionary).reset_index(drop=True)
+    resultTableForManipulation = resultTable.copy()
     
-    if excelOn: # I added this here so that when we are using the write to excel panel the table can be in its original form
-        return resultTable
-    else:
-        # Format output columns
-        ratio_columns = [
-            "Loss Ratio",
-            "Commission Ratio",
-            "Net Management Expense Ratio",
-            "Net Technical Margin Ratio",
-            "Net Retro Expense Ratio",
-            "Combined Ratio"
-        ]
-        
-        currency_columns = [
-            "Net Premium",
-            "Net Incurred Claim",
-            "Net Commission",
-            "Net Technical Margin"
-        ]
-        
-        # Apply currency formatting (negative in parentheses)
-        resultTable[currency_columns] = resultTable[currency_columns].map(
-            lambda x: f"({abs(x):,.2f})" if x < 0 else f"{x:,.2f}"
-        )
-        
-        # Apply percentage formatting
-        resultTable[ratio_columns] = resultTable[ratio_columns].map(lambda x: f"{x:.2%}")
-        
-        return resultTable
+    # Format output columns
+    ratio_columns = [
+        "Loss Ratio",
+        "Commission Ratio",
+        "Net Management Expense Ratio",
+        "Net Technical Margin Ratio",
+        "Net Retro Expense Ratio",
+        "Combined Ratio"
+    ]
+    
+    currency_columns = [
+        "Net Premium",
+        "Net Incurred Claim",
+        "Net Commission",
+        "Net Technical Margin"
+    ]
+    
+    # Apply currency formatting (negative in parentheses)
+    resultTable[currency_columns] = resultTable[currency_columns].map(
+        lambda x: f"({abs(x):,.2f})" if x < 0 else f"{x:,.2f}"
+    )
+    
+    # Apply percentage formatting
+    resultTable[ratio_columns] = resultTable[ratio_columns].map(lambda x: f"{x:.2%}")
+    
+    return (resultTable, resultTableForManipulation)

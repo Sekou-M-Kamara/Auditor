@@ -18,19 +18,23 @@ try:
     from getData import load_data
     from performanceAnalysis import premiumClaimCommissionTableConstruct, performanceAnalysis
     from writeToExcel import excelSheetsGenerator
+    from viewFilter import viewFilter
 except ImportError as e:
     print(f"Warning: Could not import backend modules: {e}")
     load_data = None
     premiumClaimCommissionTableConstruct = None
     performanceAnalysis = None
     excelSheetsGenerator = None
+    viewFilter = None
 
 # Session cache: stores source data and pre-constructed analysis tables
 analysis_cache = {
     'sourceData': None,
     'premiumTable': None,
     'claimTable': None,
-    'commissionTable': None
+    'commissionTable': None,
+    'latestResultTableView': None,
+    'latestResultTableManipulation': None
 }
 
 app = Flask(__name__)
@@ -164,6 +168,8 @@ def get_data():
         # Cache source data
         global analysis_cache
         analysis_cache['sourceData'] = loaded_data
+        analysis_cache['latestResultTableView'] = None
+        analysis_cache['latestResultTableManipulation'] = None
         
         # Construct and cache analysis tables (one-time operation)
         if premiumClaimCommissionTableConstruct is None:
@@ -309,7 +315,7 @@ def run_analysis():
         
         # Run performance analysis
         try:
-            result_table = performanceAnalysis(
+            analysis_output = performanceAnalysis(
                 data=source_data,
                 tableDict=tables_dict,
                 category_header=category_header,
@@ -318,6 +324,14 @@ def run_analysis():
                 net_management_expense_ratio=net_management_expense_ratio,
                 filterArray=filters
             )
+
+            if isinstance(analysis_output, (list, tuple)) and len(analysis_output) >= 2:
+                view_result_table = analysis_output[0]
+                manipulation_result_table = analysis_output[1]
+            else:
+                # Backward compatibility if function returns a single DataFrame.
+                manipulation_result_table = analysis_output
+                view_result_table = analysis_output
         except Exception as e:
             return jsonify({
                 'status': 'error',
@@ -326,15 +340,18 @@ def run_analysis():
             }), 500
         
         # Prepare response
-        results_json = dataframe_to_json(result_table)
-        columns = get_dataframe_headers(result_table)
+        analysis_cache['latestResultTableView'] = view_result_table.copy().reset_index(drop=True)
+        analysis_cache['latestResultTableManipulation'] = manipulation_result_table.copy().reset_index(drop=True)
+
+        results_json = dataframe_to_json(view_result_table)
+        columns = get_dataframe_headers(view_result_table)
         
         return jsonify({
             'status': 'success',
             'data': results_json,
             'metadata': {
                 'analysisType': analysis_type,
-                'rows': len(result_table),
+                'rows': len(view_result_table),
                 'columns': columns,
                 'params': params
             }
@@ -373,6 +390,62 @@ def get_metadata():
         return jsonify({
             'status': 'error',
             'message': f'Metadata error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/view-filter', methods=['POST'])
+def run_view_filter():
+    """
+    Filter already-generated analysis results without recomputing analysis.
+
+    POST request: {
+        "filterBundle": [[header, value, operation], ...]
+    }
+    """
+    try:
+        global analysis_cache
+
+        if viewFilter is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'View filter function not available',
+                'data': None
+            }), 500
+
+        if analysis_cache['latestResultTableManipulation'] is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'No result table available. Run analysis first.',
+                'data': None
+            }), 400
+
+        request_data = request.get_json() or {}
+        filter_bundle = request_data.get('filterBundle', [])
+
+        if not isinstance(filter_bundle, list):
+            return jsonify({
+                'status': 'error',
+                'message': 'filterBundle must be an array',
+                'data': None
+            }), 400
+
+        filtered_df = viewFilter(analysis_cache['latestResultTableManipulation'].copy(), filter_bundle)
+        filtered_view_df = analysis_cache['latestResultTableView'].loc[filtered_df.index].copy()
+
+        return jsonify({
+            'status': 'success',
+            'data': dataframe_to_json(filtered_view_df),
+            'metadata': {
+                'rows': len(filtered_view_df),
+                'columns': list(filtered_view_df.columns)
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'View filter error: {str(e)}',
+            'data': None
         }), 500
 
 

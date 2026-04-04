@@ -159,7 +159,13 @@ def excelSheetsGenerator(analysisType,
         if "excelOn" in inspect.signature(performanceAnalysis).parameters:
             kwargs["excelOn"] = True
 
-        return performanceAnalysis(**kwargs)
+        analysis_output = performanceAnalysis(**kwargs)
+
+        if isinstance(analysis_output, (list, tuple)) and len(analysis_output) >= 2:
+            return analysis_output[1]
+
+        # Backward compatibility if performanceAnalysis returns one table.
+        return analysis_output
 
     if oneSheet:
         workSheet = workBook.add_worksheet(str(analysisType)[:31] or "Analysis")
