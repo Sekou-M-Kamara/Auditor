@@ -34,7 +34,8 @@ analysis_cache = {
     'claimTable': None,
     'commissionTable': None,
     'latestResultTableView': None,
-    'latestResultTableManipulation': None
+    'latestResultTableManipulation': None,
+    'activeViewFilterBundle': []
 }
 
 app = Flask(__name__)
@@ -170,6 +171,7 @@ def get_data():
         analysis_cache['sourceData'] = loaded_data
         analysis_cache['latestResultTableView'] = None
         analysis_cache['latestResultTableManipulation'] = None
+        analysis_cache['activeViewFilterBundle'] = []
         
         # Construct and cache analysis tables (one-time operation)
         if premiumClaimCommissionTableConstruct is None:
@@ -251,6 +253,15 @@ def run_analysis():
         analysis_type = request_data.get('analysisType', 'performance')
         params = request_data.get('params', {})
         filters = request_data.get('filters', [])
+        active_view_filter_bundle = analysis_cache.get('activeViewFilterBundle')
+        if active_view_filter_bundle is None:
+            active_view_filter_bundle = []
+        elif not isinstance(active_view_filter_bundle, list):
+            return jsonify({
+                'status': 'error',
+                'message': 'Cached active view filter bundle is invalid',
+                'data': None
+            }), 500
         
         # DEBUG: Print filters to console
         print(f"\n{'='*60}")
@@ -343,15 +354,36 @@ def run_analysis():
         analysis_cache['latestResultTableView'] = view_result_table.copy().reset_index(drop=True)
         analysis_cache['latestResultTableManipulation'] = manipulation_result_table.copy().reset_index(drop=True)
 
-        results_json = dataframe_to_json(view_result_table)
-        columns = get_dataframe_headers(view_result_table)
+        response_table = view_result_table
+        if active_view_filter_bundle:
+            if viewFilter is None:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'View filter function not available for active view filter bundle',
+                    'data': None
+                }), 500
+
+            try:
+                response_table = viewFilter(
+                    analysis_cache['latestResultTableManipulation'].copy(),
+                    active_view_filter_bundle
+                )
+            except Exception as e:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Failed to apply active view filter bundle: {str(e)}',
+                    'data': None
+                }), 500
+
+        results_json = dataframe_to_json(response_table)
+        columns = get_dataframe_headers(response_table)
         
         return jsonify({
             'status': 'success',
             'data': results_json,
             'metadata': {
                 'analysisType': analysis_type,
-                'rows': len(view_result_table),
+                'rows': len(response_table),
                 'columns': columns,
                 'params': params
             }
@@ -431,8 +463,14 @@ def run_view_filter():
                 'data': None
             }), 400
 
-        filtered_df = viewFilter(analysis_cache['latestResultTableManipulation'].copy(), filter_bundle)
-        filtered_view_df = filtered_df.copy()
+        if len(filter_bundle) == 0:
+            filtered_view_df = analysis_cache['latestResultTableView'].copy()
+        else:
+            filtered_df = viewFilter(analysis_cache['latestResultTableManipulation'].copy(), filter_bundle)
+            filtered_view_df = filtered_df.copy()
+
+        analysis_cache['activeViewFilterBundle'] = filter_bundle
+
         # filtered_view_df = analysis_cache['latestResultTableView'].loc[filtered_df.index].copy()
 
         return jsonify({

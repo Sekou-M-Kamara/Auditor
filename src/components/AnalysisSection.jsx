@@ -207,7 +207,6 @@ function AnalysisSection({ sourceData }) {
       const result = await response.json();
       setAnalysisResults(result);
       setViewFilteredResults(null);
-      setViewFilters([]);
     } catch (err) {
       setResultError(err.message);
       console.error('Analysis error:', err);
@@ -269,7 +268,6 @@ function AnalysisSection({ sourceData }) {
       const result = await response.json();
       setAnalysisResults(result);
       setViewFilteredResults(null);
-      setViewFilters([]);
     } catch (err) {
       setResultError(err.message);
       console.error('Analysis error:', err);
@@ -374,24 +372,20 @@ function AnalysisSection({ sourceData }) {
   const handleRemoveViewFilter = (index) => {
     const nextFilters = viewFilters.filter((_, i) => i !== index);
     setViewFilters(nextFilters);
-    if (nextFilters.length === 0) {
-      setViewFilteredResults(null);
-      return;
-    }
     handleApplyViewFilters(nextFilters);
   };
 
   const handleClearAllViewFilters = () => {
     // Keep cached filtered view in session storage; only clear active filter application.
     setViewFilters([]);
-    setViewFilteredResults(null);
+    handleApplyViewFilters([]);
   };
 
   const handleApplyViewFilters = async (filtersToApply = viewFilters) => {
-    if (!analysisResults || !Array.isArray(analysisResults.data) || filtersToApply.length === 0) return;
+    if (!analysisResults || !Array.isArray(analysisResults.data)) return;
 
     const signature = getResultSignature(analysisResults);
-    if (!signature) return;
+    if (!signature && filtersToApply.length > 0) return;
 
     const cacheStore = getViewFilterCacheStore();
     const currentFiltersKey = JSON.stringify(filtersToApply);
@@ -421,13 +415,20 @@ function AnalysisSection({ sourceData }) {
         }
       };
 
-      setViewFilteredResults(filteredResult);
-      cacheStore[signature] = {
-        filtersKey: currentFiltersKey,
-        filters: filtersToApply,
-        filteredResult
-      };
-      setViewFilterCacheStore(cacheStore);
+      if (filtersToApply.length === 0) {
+        // Clear stale filtered cache entry and render server-returned unfiltered table immediately.
+        delete cacheStore[signature];
+        setViewFilterCacheStore(cacheStore);
+        setViewFilteredResults(filteredResult);
+      } else {
+        setViewFilteredResults(filteredResult);
+        cacheStore[signature] = {
+          filtersKey: currentFiltersKey,
+          filters: filtersToApply,
+          filteredResult
+        };
+        setViewFilterCacheStore(cacheStore);
+      }
     } catch (err) {
       setResultError(err.message || 'View filter error');
     } finally {
