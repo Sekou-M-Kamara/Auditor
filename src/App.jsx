@@ -30,7 +30,7 @@ function App() {
           <img className="brand-logo" src={waicaLogo} alt="WAICA Reinsurance Corporation logo" />
           <div className="brand-copy">
             <h1>Auditor Analysis Framework</h1>
-            <p>Internal Audit Performance Review Dashboard</p>
+            <p>Explore, analyze, and audit.</p>
           </div>
         </div>
         <div className="brand-tag">Risk Analytics</div>

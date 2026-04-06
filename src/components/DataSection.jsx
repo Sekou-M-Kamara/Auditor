@@ -11,19 +11,18 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
       onSetError(null);
       onSetLoading(true);
       const startTime = Date.now();
-      
+
       setLoadingDetails({
-        status: 'Connecting to server...',
+        status: 'Retrieving data...',
         startTime,
         elapsed: 0
       });
 
-      // Update elapsed time every 100ms while loading
       const interval = setInterval(() => {
-        setLoadingDetails((prev) => ({
+        setLoadingDetails((prev) => (prev ? {
           ...prev,
           elapsed: Date.now() - startTime
-        }));
+        } : prev));
       }, 100);
 
       const response = await fetch('/api/data', {
@@ -42,10 +41,10 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      setLoadingDetails((prev) => ({
+      setLoadingDetails((prev) => (prev ? {
         ...prev,
         status: 'Processing data...'
-      }));
+      } : prev));
 
       const result = await response.json();
 
@@ -63,8 +62,7 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
 
       // Extract the data array from the API response
       onDataFetch(result.data);
-      
-      // Keep success message visible for 2 seconds
+
       setTimeout(() => {
         setLoadingDetails(null);
         onSetLoading(false);
@@ -75,13 +73,13 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
       
       const errorMessage = err.message || 'Unknown error occurred';
       onSetError(errorMessage);
-      
+
       setLoadingDetails({
         status: 'Failed!',
         error: errorMessage,
         elapsed
       });
-      
+
       onSetLoading(false);
     }
   };
@@ -159,7 +157,7 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         </button>
       </div>
 
-      {loadingDetails && <LoadingIndicator details={loadingDetails} />}
+      {loadingDetails && <LoadingIndicator details={loadingDetails} showSpinner={false} />}
       {error && <div className="error-message">❌ {error}</div>}
 
       <ul className="viewport-list">

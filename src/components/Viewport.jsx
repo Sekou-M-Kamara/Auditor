@@ -570,6 +570,29 @@ function Viewport({
     setNotebookPanelMode('editor');
   };
 
+  const deleteNotebook = (notebookId) => {
+    const target = notebooks.find((n) => n.id === notebookId);
+    if (!target) return;
+
+    const confirmed = window.confirm(`Delete notebook \"${target.name}\"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const remaining = notebooks.filter((n) => n.id !== notebookId);
+    setNotebooks(remaining);
+
+    if (activeNotebookId === notebookId) {
+      if (remaining.length > 0) {
+        setActiveNotebookId(remaining[0].id);
+        setNotebookPanelMode('library');
+      } else {
+        setActiveNotebookId('');
+        setNotebookPanelMode('library');
+      }
+    }
+
+    showNotebookSavedToast('Notebook deleted');
+  };
+
   const toHtmlTable = (headers, rows) => {
     const safeHeaders = Array.isArray(headers) ? headers : [];
     const safeRows = Array.isArray(rows) ? rows : [];
@@ -1332,22 +1355,50 @@ function Viewport({
                   <div style={{ fontSize: '12px', color: '#6b7280', padding: '10px' }}>No notebook yet. Create one above.</div>
                 ) : (
                   notebooks.map((notebook, idx) => (
-                    <button
+                    <div
                       key={notebook.id}
-                      onClick={() => openNotebookEditor(notebook.id)}
                       style={{
                         width: '100%',
-                        textAlign: 'left',
-                        border: 'none',
                         borderBottom: idx === notebooks.length - 1 ? 'none' : '1px solid #e5edf7',
                         background: '#fff',
                         padding: '10px',
-                        cursor: 'pointer'
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px'
                       }}
                     >
-                      <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '13px' }}>{notebook.name}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>{notebook.description || 'No description'}</div>
-                    </button>
+                      <button
+                        onClick={() => openNotebookEditor(notebook.id)}
+                        style={{
+                          textAlign: 'left',
+                          border: 'none',
+                          background: 'transparent',
+                          padding: 0,
+                          cursor: 'pointer',
+                          flex: 1
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '13px' }}>{notebook.name}</div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>{notebook.description || 'No description'}</div>
+                      </button>
+                      <button
+                        onClick={() => deleteNotebook(notebook.id)}
+                        style={{
+                          border: '1px solid #fecaca',
+                          background: '#fef2f2',
+                          color: '#b91c1c',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          padding: '4px 7px',
+                          fontWeight: 700
+                        }}
+                        title="Delete notebook"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -1555,6 +1606,21 @@ function Viewport({
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <button
+                onClick={() => deleteNotebook(activeNotebook.id)}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ef4444',
+                  background: '#fee2e2',
+                  color: '#b91c1c',
+                  cursor: 'pointer',
+                  fontWeight: 700
+                }}
+                title="Delete notebook"
+              >
+                Delete Notebook
+              </button>
               <button
                 onClick={addDescriptionCell}
                 style={{

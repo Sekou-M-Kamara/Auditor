@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 
-function RatioAnalysisForm({ onSubmit, sourceData }) {
+function RatioAnalysisForm({ onSubmit, sourceData, loading = false }) {
   const [formData, setFormData] = useState({
     categoryHeader: 'Reporting Unit1 Leaf Name',
     codeHeader: 'Entry Code',
@@ -99,8 +99,13 @@ function RatioAnalysisForm({ onSubmit, sourceData }) {
         />
       </div>
 
-      <button type="submit" className="btn btn-primary" style={{ marginTop: '12px' }}>
-        Run Analysis
+      <button
+        type="submit"
+        className="btn btn-primary"
+        style={{ marginTop: '12px', opacity: loading ? 0.7 : 1 }}
+        disabled={loading}
+      >
+        {loading ? 'Running Analysis...' : 'Run Analysis'}
       </button>
     </form>
   );

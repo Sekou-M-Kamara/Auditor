@@ -1,6 +1,6 @@
 import React from 'react';
 
-function LoadingIndicator({ details }) {
+function LoadingIndicator({ details, showSpinner = true }) {
   if (!details) return null;
 
   const formatTime = (ms) => {
@@ -16,7 +16,7 @@ function LoadingIndicator({ details }) {
     <div className={`loading-indicator ${isSuccess ? 'success' : isFailed ? 'error' : 'loading'}`}>
       <div className="loading-content">
         <div className="loading-animation">
-          {isLoading && <div className="spinner-small"></div>}
+          {isLoading && showSpinner && <div className="spinner-small"></div>}
           <span className={`status-icon ${isSuccess ? 'success' : isFailed ? 'error' : ''}`}>
             {isLoading ? '⏳' : isSuccess ? '✓' : '✗'}
           </span>

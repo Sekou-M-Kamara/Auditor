@@ -905,17 +905,6 @@ function AnalysisSection({ sourceData }) {
                       </div>
                     ))}
                   </div>
-                  <div style={{
-                    backgroundColor: '#fff3cd',
-                    border: '1px solid #ffc107',
-                    borderRadius: '4px',
-                    padding: '8px 10px',
-                    fontSize: '12px',
-                    color: '#856404',
-                    fontWeight: '500'
-                  }}>
-                    ⚠️ Filters active. Click "Run Analysis" or use "Refresh Analysis" in expanded view to see results with filters applied.
-                  </div>
                 </>
               )}
             </div>
@@ -934,7 +923,7 @@ function AnalysisSection({ sourceData }) {
           </select>
         </div>
 
-        <AnalysisFormComponent onSubmit={handleRunAnalysis} sourceData={sourceData} />
+        <AnalysisFormComponent onSubmit={handleRunAnalysis} sourceData={sourceData} loading={resultLoading} />
       </div>
 
       <div className="analysis-results">

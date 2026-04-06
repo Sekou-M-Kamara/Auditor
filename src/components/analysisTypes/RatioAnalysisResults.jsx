@@ -67,10 +67,6 @@ function RatioAnalysisResults({ results, thresholds = {}, thresholdsEnabled = tr
     return false;
   };
   const isTotalRow = (idx) => idx === resultsData.length - 1;
-  const activeViewFilterHeaders = useMemo(
-    () => new Set((Array.isArray(activeViewFilters) ? activeViewFilters : []).map((f) => f?.[0]).filter(Boolean)),
-    [activeViewFilters]
-  );
 
   // Parse ratio value for comparison
   const parseRatioValue = (value) => {
@@ -120,11 +116,10 @@ function RatioAnalysisResults({ results, thresholds = {}, thresholdsEnabled = tr
               {displayColumns.map((col) => {
                 const isRatio = isRatioColumn(col);
                 const isCategory = isCategoryColumn(col);
-                const isActiveFilterColumn = activeViewFilterHeaders.has(col);
                 return (
                   <th key={col} style={{ 
                     textAlign: isRatio ? 'right' : 'left',
-                    backgroundColor: isActiveFilterColumn ? '#e3f2fd' : isCategory ? '#e3f2fd' : isRatio ? '#f0e6ff' : '#f9f9f9',
+                    backgroundColor: isCategory ? '#e3f2fd' : isRatio ? '#f0e6ff' : '#f9f9f9',
                     fontWeight: isCategory ? 'bold' : 'normal',
                     minWidth: isCategory ? '200px' : 'auto'
                   }}>
@@ -143,14 +138,13 @@ function RatioAnalysisResults({ results, thresholds = {}, thresholdsEnabled = tr
                   const isCategory = isCategoryColumn(col);
                   const isTotal = isTotalRow(idx);
                   const shouldHighlight = shouldHighlightCell(col, value, idx);
-                  const isActiveFilterColumn = activeViewFilterHeaders.has(col);
 
                   return (
                     <td
                       key={`${idx}-${col}`}
                       style={{
                         textAlign: isRatio ? 'right' : 'left',
-                        backgroundColor: shouldHighlight ? '#ffcccc' : (isActiveFilterColumn ? '#f5f9ff' : (isCategory ? '#f5f9ff' : (isTotal && isRatio ? '#f0e6ff' : (isRatio ? '#fafafa' : 'transparent')))),
+                        backgroundColor: shouldHighlight ? '#ffcccc' : (isCategory ? '#f5f9ff' : (isTotal && isRatio ? '#f0e6ff' : (isRatio ? '#fafafa' : 'transparent'))),
                         color: shouldHighlight ? '#d32f2f' : 'inherit',
                         fontWeight: isCategory ? '500' : 'normal'
                       }}
@@ -166,7 +160,6 @@ function RatioAnalysisResults({ results, thresholds = {}, thresholdsEnabled = tr
       </div>
 
       <div style={{ margin: '15px 0', fontSize: '12px', color: '#999' }}>
-        <p>• Currency values shown in thousands</p>
         <p>• Negative amounts displayed in parentheses</p>
         <p>• Last row shows totals and aggregate ratios</p>
         <p>• Use "Configure Thresholds" button to set conditions for highlighting</p>
