@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-function RatioAnalysisResults({ results, thresholds = {} }) {
+function RatioAnalysisResults({ results, thresholds = {}, thresholdsEnabled = true, activeViewFilters = [] }) {
 
   if (!results) {
     return (
@@ -38,12 +38,39 @@ function RatioAnalysisResults({ results, thresholds = {} }) {
     'Combined Ratio'
   ];
 
+  const configuredCategoryHeader = useMemo(() => {
+    const metadataParams = results?.metadata?.params || {};
+    return metadataParams.categoryHeader || metadataParams.category_header || null;
+  }, [results]);
+
   // Keep all columns including category column
   const displayColumns = columns.filter(col => col !== '');
+  const categoryColumn = useMemo(() => {
+    if (configuredCategoryHeader && displayColumns.includes(configuredCategoryHeader)) {
+      return configuredCategoryHeader;
+    }
+
+    const conventionalCategoryColumn = displayColumns.find(
+      (col) => col.includes('Reporting Unit') || col.includes('Type of Business') || col === 'Category'
+    );
+    if (conventionalCategoryColumn) return conventionalCategoryColumn;
+
+    // Fallback for filtered/cached payloads: first non-ratio column is typically the category dimension.
+    const firstNonRatioColumn = displayColumns.find((col) => !ratioColumns.includes(col));
+    return firstNonRatioColumn || null;
+  }, [configuredCategoryHeader, displayColumns, ratioColumns]);
 
   const isRatioColumn = (col) => ratioColumns.includes(col);
-  const isCategoryColumn = (col) => col.includes('Reporting Unit') || col.includes('Type of Business') || col === 'Category';
+  const isCategoryColumn = (col) => {
+    if (!col) return false;
+    if (categoryColumn && col === categoryColumn) return true;
+    return false;
+  };
   const isTotalRow = (idx) => idx === resultsData.length - 1;
+  const activeViewFilterHeaders = useMemo(
+    () => new Set((Array.isArray(activeViewFilters) ? activeViewFilters : []).map((f) => f?.[0]).filter(Boolean)),
+    [activeViewFilters]
+  );
 
   // Parse ratio value for comparison
   const parseRatioValue = (value) => {
@@ -57,6 +84,7 @@ function RatioAnalysisResults({ results, thresholds = {} }) {
 
   // Check if cell should be highlighted based on threshold
   const shouldHighlightCell = (col, value, rowIndex) => {
+    if (!thresholdsEnabled) return false;
     if (!isRatioColumn(col) || !thresholds[col]) return false;
     if (rowIndex === resultsData.length - 1) return false; // Don't highlight total row
 
@@ -92,10 +120,11 @@ function RatioAnalysisResults({ results, thresholds = {} }) {
               {displayColumns.map((col) => {
                 const isRatio = isRatioColumn(col);
                 const isCategory = isCategoryColumn(col);
+                const isActiveFilterColumn = activeViewFilterHeaders.has(col);
                 return (
                   <th key={col} style={{ 
                     textAlign: isRatio ? 'right' : 'left',
-                    backgroundColor: isCategory ? '#e3f2fd' : isRatio ? '#f0e6ff' : '#f9f9f9',
+                    backgroundColor: isActiveFilterColumn ? '#e3f2fd' : isCategory ? '#e3f2fd' : isRatio ? '#f0e6ff' : '#f9f9f9',
                     fontWeight: isCategory ? 'bold' : 'normal',
                     minWidth: isCategory ? '200px' : 'auto'
                   }}>
@@ -114,13 +143,14 @@ function RatioAnalysisResults({ results, thresholds = {} }) {
                   const isCategory = isCategoryColumn(col);
                   const isTotal = isTotalRow(idx);
                   const shouldHighlight = shouldHighlightCell(col, value, idx);
+                  const isActiveFilterColumn = activeViewFilterHeaders.has(col);
 
                   return (
                     <td
                       key={`${idx}-${col}`}
                       style={{
                         textAlign: isRatio ? 'right' : 'left',
-                        backgroundColor: shouldHighlight ? '#ffcccc' : (isCategory ? '#f5f9ff' : (isTotal && isRatio ? '#f0e6ff' : (isRatio ? '#fafafa' : 'transparent'))),
+                        backgroundColor: shouldHighlight ? '#ffcccc' : (isActiveFilterColumn ? '#f5f9ff' : (isCategory ? '#f5f9ff' : (isTotal && isRatio ? '#f0e6ff' : (isRatio ? '#fafafa' : 'transparent')))),
                         color: shouldHighlight ? '#d32f2f' : 'inherit',
                         fontWeight: isCategory ? '500' : 'normal'
                       }}

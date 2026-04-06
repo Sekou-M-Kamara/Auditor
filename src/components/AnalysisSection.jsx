@@ -10,6 +10,7 @@ function AnalysisSection({ sourceData }) {
   const [resultLoading, setResultLoading] = useState(false);
   const [resultError, setResultError] = useState(null);
   const [showThresholdConfig, setShowThresholdConfig] = useState(false);
+  const [thresholdsEnabled, setThresholdsEnabled] = useState(false);
   const [showFilterConfig, setShowFilterConfig] = useState(false);
   const [showExcelExportPanel, setShowExcelExportPanel] = useState(false);
   const [excelExportLoading, setExcelExportLoading] = useState(false);
@@ -27,12 +28,12 @@ function AnalysisSection({ sourceData }) {
   const [lastFormParams, setLastFormParams] = useState(null);
   // Session memory: thresholds persist during the session
   const [thresholds, setThresholds] = useState({
-    'Loss Ratio': { condition: 'atleast', value: '0.75' },
-    'Commission Ratio': { condition: 'atleast', value: '0.20' },
-    'Net Management Expense Ratio': { condition: 'atleast', value: '0.12' },
-    'Net Technical Margin Ratio': { condition: 'atmost', value: '0.05' },
-    'Net Retro Expense Ratio': { condition: 'atleast', value: '' },
-    'Combined Ratio': { condition: 'atleast', value: '1.00' }
+    'Loss Ratio': { condition: 'atleast', value: '0.50' },
+    'Commission Ratio': { condition: 'atleast', value: '0.50' },
+    'Net Management Expense Ratio': { condition: 'atleast', value: '0.50' },
+    'Net Technical Margin Ratio': { condition: 'atmost', value: '0.50' },
+    'Net Retro Expense Ratio': { condition: 'atleast', value: '0.50' },
+    'Combined Ratio': { condition: 'atleast', value: '0.50' }
   });
 
   // Filter state: array of [header, item, operation]
@@ -197,7 +198,6 @@ function AnalysisSection({ sourceData }) {
         body: JSON.stringify({
           analysisType,
           params: formParams,
-          sourceData,
           filters: filtersToUse
         })
       });
@@ -258,7 +258,6 @@ function AnalysisSection({ sourceData }) {
         body: JSON.stringify({
           analysisType,
           params: paramsToUse,
-          sourceData,
           filters
         })
       });
@@ -315,6 +314,43 @@ function AnalysisSection({ sourceData }) {
     'Net Retro Expense Ratio',
     'Combined Ratio'
   ];
+
+  const ratioColumnSet = useMemo(() => new Set(ratioColumns), [ratioColumns]);
+  const negativeMagnitudeColumns = useMemo(() => new Set([
+    'Net Commission',
+    'Net Incurred Claim'
+  ]), []);
+
+  const mapViewFilterForBackend = useCallback((filterEntry) => {
+    if (!Array.isArray(filterEntry) || filterEntry.length < 3) return filterEntry;
+
+    const [header, rawValue, rawOperation] = filterEntry;
+    const operation = rawOperation || 'Equal';
+    const parsedValue = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
+
+    if (!Number.isFinite(parsedValue)) {
+      return [header, rawValue, operation];
+    }
+
+    // Ratio columns are entered as percentages in the UI and converted to decimal for backend filtering.
+    if (ratioColumnSet.has(header)) {
+      return [header, parsedValue / 100, operation];
+    }
+
+    // Claim/commission are shown as negative values in the table. Allow positive user input by
+    // remapping to the underlying sign convention and swapping inequality direction.
+    if (negativeMagnitudeColumns.has(header) && parsedValue >= 0) {
+      const backendValue = -Math.abs(parsedValue);
+      let backendOperation = operation;
+
+      if (operation === 'Atlest') backendOperation = 'Atmost';
+      else if (operation === 'Atmost') backendOperation = 'Atlest';
+
+      return [header, backendValue, backendOperation];
+    }
+
+    return [header, parsedValue, operation];
+  }, [negativeMagnitudeColumns, ratioColumnSet]);
 
   const getDefaultThresholdCondition = (ratioName) => (
     ratioName === 'Net Technical Margin Ratio' ? 'atmost' : 'atleast'
@@ -389,6 +425,7 @@ function AnalysisSection({ sourceData }) {
 
     const cacheStore = getViewFilterCacheStore();
     const currentFiltersKey = JSON.stringify(filtersToApply);
+    const backendFilterBundle = filtersToApply.map(mapViewFilterForBackend);
 
     setViewFilterLoading(true);
     try {
@@ -396,7 +433,7 @@ function AnalysisSection({ sourceData }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filterBundle: filtersToApply
+          filterBundle: backendFilterBundle
         })
       });
 
@@ -455,7 +492,8 @@ function AnalysisSection({ sourceData }) {
 
     const exportPayload = {
       ...payload,
-      thresholds
+      thresholds,
+      conditionalFormattingEnable: thresholdsEnabled
     };
 
     const totalSteps = Array.isArray(payload?.categoryBundle) ? payload.categoryBundle.length : 0;
@@ -643,7 +681,25 @@ function AnalysisSection({ sourceData }) {
             border: '1px solid #e0e0e0',
             borderRadius: '4px'
           }}>
-            <h4 style={{ marginTop: 0 }}>Ratio Threshold Configuration</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '12px', flexWrap: 'wrap' }}>
+              <h4 style={{ margin: 0 }}>Ratio Threshold Configuration</h4>
+              <button
+                onClick={() => setThresholdsEnabled((prev) => !prev)}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '4px',
+                  border: thresholdsEnabled ? '1px solid #198754' : '1px solid #6c757d',
+                  backgroundColor: thresholdsEnabled ? '#d1e7dd' : '#e9ecef',
+                  color: thresholdsEnabled ? '#0f5132' : '#495057',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}
+                title={thresholdsEnabled ? 'Disable thresholds' : 'Enable thresholds'}
+              >
+                {thresholdsEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
               {ratioColumns.map(ratioName => (
                 <div key={ratioName} style={{ padding: '10px', backgroundColor: 'white', borderRadius: '4px', border: '1px solid #e0e0e0' }}>
@@ -655,6 +711,7 @@ function AnalysisSection({ sourceData }) {
                     <select
                       value={thresholds[ratioName]?.condition || getDefaultThresholdCondition(ratioName)}
                       onChange={(e) => handleThresholdChange(ratioName, 'condition', e.target.value)}
+                      disabled={!thresholdsEnabled}
                       style={{
                         padding: '6px',
                         borderRadius: '4px',
@@ -675,6 +732,7 @@ function AnalysisSection({ sourceData }) {
                     min="0"
                     value={decimalRatioToPercentDisplay(thresholds[ratioName]?.value)}
                     onChange={(e) => handleThresholdChange(ratioName, 'value', e.target.value)}
+                    disabled={!thresholdsEnabled}
                     style={{
                       padding: '6px',
                       borderRadius: '4px',
@@ -685,7 +743,7 @@ function AnalysisSection({ sourceData }) {
                   />
 
                   <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
-                    <div>Cells will turn red if value</div>
+                    <div>{thresholdsEnabled ? 'Cells will turn red if value' : 'Threshold highlighting is currently disabled'}</div>
                     <div>{thresholds[ratioName]?.condition === 'atleast' ? 'is greater than or equal to' : thresholds[ratioName]?.condition === 'atmost' ? 'is less than or equal to' : 'is equal to'} {decimalRatioToPercentDisplay(thresholds[ratioName]?.value)}%</div>
                   </div>
                 </div>
@@ -888,12 +946,15 @@ function AnalysisSection({ sourceData }) {
           <Viewport 
             title="Performance Analysis Results" 
             loading={resultLoading} 
+            notebookEnabled={true}
             filters={filters}
             resultFilters={viewFilters}
             sourceData={sourceData}
             resultData={baseResultData}
             availableHeaders={availableHeaders}
             resultHeaders={baseResultHeaders}
+            notebookData={displayedResultData}
+            notebookHeaders={displayedResultHeaders}
             onRunAnalysis={handleRunAnalysis}
             resultLoading={resultLoading}
             onAddFilter={handleAddFilter}
@@ -907,7 +968,7 @@ function AnalysisSection({ sourceData }) {
             resultFilterLoading={viewFilterLoading}
           >
             {displayedResults ? (
-              <AnalysisResultsComponent results={displayedResults} thresholds={thresholds} />
+              <AnalysisResultsComponent results={displayedResults} thresholds={thresholds} thresholdsEnabled={thresholdsEnabled} activeViewFilters={viewFilters} />
             ) : (
               <div className="empty-state">
                 <div className="empty-state-icon">📈</div>

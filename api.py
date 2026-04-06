@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
+import json
 import traceback
 import sys
 import os
@@ -49,27 +50,13 @@ CORS(app)
 # ============================================================================
 
 def dataframe_to_json(df):
-    """Convert DataFrame to JSON-serializable list of dicts, handling NaN and numpy types"""
+    """Convert DataFrame to JSON-serializable records using pandas fast path."""
     if df is None or df.empty:
         return []
-    
-    df_clean = df.where(pd.notna(df), None)
-    records = []
-    
-    for _, row in df_clean.iterrows():
-        record = {}
-        for col, value in row.items():
-            if pd.isna(value):
-                record[col] = None
-            elif isinstance(value, (np.integer, np.floating)):
-                record[col] = float(value) if isinstance(value, np.floating) else int(value)
-            elif isinstance(value, np.ndarray):
-                record[col] = value.tolist()
-            else:
-                record[col] = str(value) if value is not None else None
-        records.append(record)
-    
-    return records
+
+    # pandas.to_json is vectorized in C and significantly faster than iterrows-based conversion
+    # for medium/large tables while preserving numeric types for frontend filtering.
+    return json.loads(df.to_json(orient='records', date_format='iso'))
 
 
 def get_dataframe_headers(df):
@@ -535,6 +522,13 @@ def export_excel():
         net_management_expense_ratio = request_data.get('net_management_expense_ratio')
         filter_array = request_data.get('filterArray', [])
         thresholds = request_data.get('thresholds', {})
+        conditional_formatting_enable = request_data.get('conditionalFormattingEnable', True)
+
+        if isinstance(conditional_formatting_enable, str):
+            lowered = conditional_formatting_enable.strip().lower()
+            conditional_formatting_enable = lowered in ('true', '1', 'yes', 'on')
+        else:
+            conditional_formatting_enable = bool(conditional_formatting_enable)
 
         missing_fields = []
         for field_name, field_value in [
@@ -612,7 +606,8 @@ def export_excel():
             gross_data_field_header=gross_data_field_header,
             net_management_expense_ratio=float(net_management_expense_ratio),
             filterArray=filter_array,
-            thresholds=thresholds
+            thresholds=thresholds,
+            conditionalFormattingEnable=conditional_formatting_enable
         )
 
         default_file_name = f"{analysis_type}_analysis_export.xlsx"

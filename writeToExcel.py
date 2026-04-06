@@ -18,7 +18,8 @@ def excelSheetsGenerator(analysisType,
                          gross_data_field_header="Detail Amount (Base)",
                          net_management_expense_ratio=0.12,
                          filterArray=None,
-                         thresholds=None):
+                         thresholds=None,
+                         conditionalFormattingEnable=True):
 
     if tableDict is None:
         tableDict = {}
@@ -35,7 +36,7 @@ def excelSheetsGenerator(analysisType,
     ratio_fmt = workBook.add_format({'num_format': '0.00%;(0.00%)'})
     threshold_alert_fmt = workBook.add_format({'bg_color': '#F8D7DA', 'font_color': '#842029'})
 
-    def excelFormatter(ws, wsRC=None, table_columns=None):
+    def excelFormatter(ws, wsRC=None, table_columns=None, conditionalFormattingEnable = True):
 
         if wsRC is None:
             wsRC = []
@@ -55,7 +56,7 @@ def excelSheetsGenerator(analysisType,
                     ws.set_column((index - 1), (index - 1), valueWidth, number_fmt)
                 for index in excelRatioColumnIndex:
                     ws.set_column((index - 1), (index - 1), headerContentsWidth, ratio_fmt)
-            else:
+            elif wsRC and conditionalFormattingEnable:
                 ratio_columns = [
                 "Loss Ratio",
                 "Commission Ratio",
@@ -142,7 +143,12 @@ def excelSheetsGenerator(analysisType,
             "columns": columns
         })
 
-        excelFormatter(ws, [start_row, end_row - 1, start_col, end_col], table.columns.tolist())
+        excelFormatter(
+            ws,
+            [start_row, end_row - 1, start_col, end_col],
+            table.columns.tolist(),
+            conditionalFormattingEnable=conditionalFormattingEnable
+        )
 
     def build_result_table(category_header_name):
         kwargs = {
