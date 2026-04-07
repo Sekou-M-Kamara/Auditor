@@ -7,7 +7,7 @@ function App() {
   const [sourceData, setSourceData] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState(null);
-  const [dataSourceUrl, setDataSourceUrl] = useState('C:/Auditor Valuation Framework/exccute.py/Profitability results from FY 2024 to FY 2025.xlsx');
+  const [dataSourceUrl, setDataSourceUrl] = useState('');
   const [dataSourceType, setDataSourceType] = useState('excel');
   const [excelSheetName, setExcelSheetName] = useState('Detailed');
 
@@ -33,7 +33,7 @@ function App() {
             <p>Explore, analyze, and audit.</p>
           </div>
         </div>
-        <div className="brand-tag">Risk Analytics</div>
+        <div className="brand-tag">Analytics</div>
       </div>
 
       <DataSection

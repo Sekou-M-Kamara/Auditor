@@ -3,7 +3,7 @@ Flask API for Auditor Valuation Framework
 Connects React frontend to Python backend (getData.py, performanceAnalysis.py)
 """
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, session
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
@@ -12,7 +12,9 @@ import traceback
 import sys
 import os
 import re
+from io import BytesIO
 from datetime import timedelta, datetime
+from uuid import uuid4
 
 # Import backend modules
 try:
@@ -28,21 +30,30 @@ except ImportError as e:
     excelSheetsGenerator = None
     viewFilter = None
 
-# Session cache: stores source data and pre-constructed analysis tables
-analysis_cache = {
-    'sourceData': None,
-    'premiumTable': None,
-    'claimTable': None,
-    'commissionTable': None,
-    'latestResultTableView': None,
-    'latestResultTableManipulation': None,
-    'activeViewFilterBundle': []
-}
+SESSION_CACHE_TTL = timedelta(hours=24)
+
+
+def _new_analysis_cache():
+    """Create a fresh cache object for a single user session."""
+    return {
+        'sourceData': None,
+        'premiumTable': None,
+        'claimTable': None,
+        'commissionTable': None,
+        'latestResultTableView': None,
+        'latestResultTableManipulation': None,
+        'activeViewFilterBundle': []
+    }
+
+
+# In-process session cache store: keyed by browser session id.
+analysis_session_store = {}
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-only-change-me')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 
 # ============================================================================
@@ -64,6 +75,42 @@ def get_dataframe_headers(df):
     return list(df.columns) if df is not None and not df.empty else []
 
 
+def _purge_expired_session_cache(now=None):
+    """Remove expired session cache entries."""
+    current_time = now or datetime.utcnow()
+    expired_keys = [
+        session_id
+        for session_id, payload in analysis_session_store.items()
+        if payload.get('expiresAt') and payload['expiresAt'] <= current_time
+    ]
+    for session_id in expired_keys:
+        analysis_session_store.pop(session_id, None)
+
+
+def get_session_cache():
+    """Return the cache object scoped to the current browser session."""
+    current_time = datetime.utcnow()
+    _purge_expired_session_cache(current_time)
+
+    session_id = session.get('analysisSessionId')
+    if not session_id:
+        session_id = str(uuid4())
+        session['analysisSessionId'] = session_id
+
+    session.permanent = True
+    payload = analysis_session_store.get(session_id)
+    if payload is None or payload.get('expiresAt') <= current_time:
+        payload = {
+            'cache': _new_analysis_cache(),
+            'expiresAt': current_time + SESSION_CACHE_TTL
+        }
+        analysis_session_store[session_id] = payload
+    else:
+        payload['expiresAt'] = current_time + SESSION_CACHE_TTL
+
+    return payload['cache']
+
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -81,6 +128,7 @@ def health_check():
 @app.route('/api/debug', methods=['GET'])
 def debug_info():
     """Debug endpoint to check backend module availability"""
+    analysis_cache = get_session_cache()
     return jsonify({
         'status': 'ok',
         'debug': {
@@ -120,31 +168,66 @@ def get_data():
     }
     """
     try:
-        request_data = request.get_json() if request.method == 'POST' else {}
-        source_type = request_data.get('source', 'excel')
-        source_url = request_data.get('url')
-        sheet_name = request_data.get('sheetName', 'Detailed')
-        
-        # Validate request
-        if not source_url:
-            return jsonify({
-                'status': 'error',
-                'message': 'No URL provided',
-                'data': None
-            }), 400
-        
-        if load_data is None:
-            return jsonify({
-                'status': 'error',
-                'message': 'Data loading function not available',
-                'data': None
-            }), 500
-        
-        # Load data
-        if source_type == 'excel':
-            loaded_data = load_data(source_url, source=source_type, sheet_name=sheet_name)
+        analysis_cache = get_session_cache()
+        source_type = 'excel'
+
+        source_url = None
+        source_name = None
+        sheet_name = 'Detailed'
+
+        if request.method == 'POST' and not request.is_json:
+            source_type = request.form.get('source', source_type)
+            sheet_name = request.form.get('sheetName', sheet_name)
+
+        if request.method == 'POST' and request.is_json:
+            request_data = request.get_json(silent=True) or {}
+            source_url = request_data.get('url')
+            source_type = request_data.get('source', source_type)
+            sheet_name = request_data.get('sheetName', sheet_name)
+
+        if request.method == 'POST' and 'file' in request.files:
+            uploaded_file = request.files['file']
+            source_name = uploaded_file.filename
+
+            if uploaded_file.filename == '':
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No file selected',
+                    'data': None
+                }), 400
+
+            file_buffer = BytesIO(uploaded_file.read())
+
+            if source_type == 'excel':
+                loaded_data = pd.read_excel(file_buffer, sheet_name=sheet_name)
+            elif source_type == 'csv':
+                loaded_data = pd.read_csv(file_buffer)
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'File upload supports only excel or csv source types',
+                    'data': None
+                }), 400
         else:
-            loaded_data = load_data(source_url, source=source_type)
+            # Backward-compatible JSON URL flow (api/existing path usage).
+            if not source_url:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No URL or upload file provided',
+                    'data': None
+                }), 400
+
+            if load_data is None:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Data loading function not available',
+                    'data': None
+                }), 500
+
+            if source_type == 'excel':
+                loaded_data = load_data(source_url, source=source_type, sheet_name=sheet_name)
+            else:
+                loaded_data = load_data(source_url, source=source_type)
         
         if loaded_data is None or loaded_data.empty:
             return jsonify({
@@ -154,7 +237,6 @@ def get_data():
             }), 400
         
         # Cache source data
-        global analysis_cache
         analysis_cache['sourceData'] = loaded_data
         analysis_cache['latestResultTableView'] = None
         analysis_cache['latestResultTableManipulation'] = None
@@ -192,6 +274,7 @@ def get_data():
                 'columns': headers,
                 'source': source_type,
                 'url': source_url,
+                'fileName': source_name,
                 'sheetName': sheet_name if source_type == 'excel' else None
             }
         }), 200
@@ -227,7 +310,7 @@ def run_analysis():
     }
     """
     try:
-        global analysis_cache
+        analysis_cache = get_session_cache()
         
         if performanceAnalysis is None:
             return jsonify({
@@ -422,7 +505,7 @@ def run_view_filter():
     }
     """
     try:
-        global analysis_cache
+        analysis_cache = get_session_cache()
 
         if viewFilter is None:
             return jsonify({
@@ -496,7 +579,7 @@ def export_excel():
     }
     """
     try:
-        global analysis_cache
+        analysis_cache = get_session_cache()
 
         if excelSheetsGenerator is None:
             return jsonify({

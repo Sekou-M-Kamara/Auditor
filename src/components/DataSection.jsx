@@ -5,12 +5,15 @@ import LoadingIndicator from './LoadingIndicator';
 
 function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, data, dataSourceUrl, setDataSourceUrl, dataSourceType, setDataSourceType, excelSheetName, setExcelSheetName }) {
   const [loadingDetails, setLoadingDetails] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   const handleFetchData = async () => {
+    let interval;
+    let startTime;
     try {
       onSetError(null);
       onSetLoading(true);
-      const startTime = Date.now();
+      startTime = Date.now();
 
       setLoadingDetails({
         status: 'Retrieving data...',
@@ -18,24 +21,41 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         elapsed: 0
       });
 
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setLoadingDetails((prev) => (prev ? {
           ...prev,
           elapsed: Date.now() - startTime
         } : prev));
       }, 100);
 
-      const response = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          source: dataSourceType,
-          url: dataSourceUrl,
-          sheetName: dataSourceType === 'excel' ? excelSheetName : undefined
-        })
-      });
+      let response;
+      if (dataSourceType === 'excel' || dataSourceType === 'csv') {
+        if (!uploadedFile) {
+          throw new Error(`Please select a ${dataSourceType.toUpperCase()} file to upload`);
+        }
 
-      clearInterval(interval);
+        const formData = new FormData();
+        formData.append('source', dataSourceType);
+        formData.append('file', uploadedFile);
+        if (dataSourceType === 'excel') {
+          formData.append('sheetName', excelSheetName);
+        }
+
+        response = await fetch('/api/data', {
+          method: 'POST',
+          body: formData
+        });
+      } else {
+        response = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: dataSourceType,
+            url: dataSourceUrl,
+            sheetName: dataSourceType === 'excel' ? excelSheetName : undefined
+          })
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -69,7 +89,7 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
       }, 2000);
     } catch (err) {
       console.error('Data fetch error:', err);
-      const elapsed = Date.now() - (loadingDetails?.startTime || Date.now());
+      const elapsed = Date.now() - (startTime || Date.now());
       
       const errorMessage = err.message || 'Unknown error occurred';
       onSetError(errorMessage);
@@ -81,6 +101,10 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
       });
 
       onSetLoading(false);
+    } finally {
+      if (interval) {
+        clearInterval(interval);
+      }
     }
   };
 
@@ -94,7 +118,10 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
           <select
             id="data-source"
             value={dataSourceType}
-            onChange={(e) => setDataSourceType(e.target.value)}
+            onChange={(e) => {
+              setDataSourceType(e.target.value);
+              setUploadedFile(null);
+            }}
             disabled={loading}
           >
             <option value="excel">Excel File</option>
@@ -105,25 +132,45 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
 
         <div className="form-group">
           <label htmlFor="data-source-url">
-            {dataSourceType === 'excel' && 'Excel File Path:'}
-            {dataSourceType === 'csv' && 'CSV File Path:'}
+            {dataSourceType === 'excel' && 'Excel Upload:'}
+            {dataSourceType === 'csv' && 'CSV Upload:'}
             {dataSourceType === 'api' && 'API URL:'}
           </label>
-          <input
-            id="data-source-url"
-            type="text"
-            value={dataSourceUrl}
-            onChange={(e) => setDataSourceUrl(e.target.value)}
-            disabled={loading}
-            placeholder={dataSourceType === 'excel' ? 'C:/path/to/file.xlsx' : dataSourceType === 'csv' ? 'C:/path/to/file.csv' : 'https://api.example.com/data'}
-            style={{
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              width: '100%',
-              fontSize: '14px'
-            }}
-          />
+          {dataSourceType === 'api' ? (
+            <input
+              id="data-source-url"
+              type="text"
+              value={dataSourceUrl}
+              onChange={(e) => setDataSourceUrl(e.target.value)}
+              disabled={loading}
+              placeholder="https://api.example.com/data"
+              style={{
+                padding: '8px',
+                borderRadius: '4px',
+                border: '1px solid #ccc',
+                width: '100%',
+                fontSize: '14px'
+              }}
+            />
+          ) : (
+            <input
+              id="data-source-url"
+              type="file"
+              accept={dataSourceType === 'excel' ? '.xlsx,.xls' : '.csv'}
+              disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                setUploadedFile(file);
+              }}
+              style={{
+                padding: '8px',
+                borderRadius: '4px',
+                border: '1px solid #ccc',
+                width: '100%',
+                fontSize: '14px'
+              }}
+            />
+          )}
         </div>
 
         {dataSourceType === 'excel' && (
