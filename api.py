@@ -33,6 +33,16 @@ except ImportError as e:
 SESSION_CACHE_TTL = timedelta(hours=24)
 
 
+def _get_allowed_origins():
+    """Read allowed frontend origins from env (comma-separated)."""
+    raw_origins = os.getenv('FRONTEND_ORIGIN', '')
+    origins = [origin.strip().rstrip('/') for origin in raw_origins.split(',') if origin.strip()]
+    if origins:
+        return origins
+    # Local development defaults.
+    return ['http://localhost:5173', 'http://127.0.0.1:5173']
+
+
 def _new_analysis_cache():
     """Create a fresh cache object for a single user session."""
     return {
@@ -49,11 +59,22 @@ def _new_analysis_cache():
 # In-process session cache store: keyed by browser session id.
 analysis_session_store = {}
 
+IS_PRODUCTION = os.getenv('FLASK_ENV', '').lower() == 'production' or os.getenv('RENDER', '').lower() == 'true'
+ALLOWED_ORIGINS = _get_allowed_origins()
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-only-change-me')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
-CORS(app, supports_credentials=True)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' if IS_PRODUCTION else 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+CORS(
+    app,
+    supports_credentials=True,
+    resources={r"/api/*": {"origins": ALLOWED_ORIGINS}}
+)
 
 
 # ============================================================================

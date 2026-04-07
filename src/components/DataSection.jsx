@@ -3,6 +3,9 @@ import Viewport from './Viewport';
 import DataPreviewTable from './DataPreviewTable';
 import LoadingIndicator from './LoadingIndicator';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const apiUrl = (path) => `${API_BASE_URL}${path}`;
+
 function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, data, dataSourceUrl, setDataSourceUrl, dataSourceType, setDataSourceType, excelSheetName, setExcelSheetName }) {
   const [loadingDetails, setLoadingDetails] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -41,13 +44,15 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
           formData.append('sheetName', excelSheetName);
         }
 
-        response = await fetch('/api/data', {
+        response = await fetch(apiUrl('/api/data'), {
           method: 'POST',
+          credentials: 'include',
           body: formData
         });
       } else {
-        response = await fetch('/api/data', {
+        response = await fetch(apiUrl('/api/data'), {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             source: dataSourceType,

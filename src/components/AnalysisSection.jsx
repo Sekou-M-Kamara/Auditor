@@ -4,6 +4,9 @@ import RatioAnalysisForm from './analysisTypes/RatioAnalysisForm';
 import RatioAnalysisResults from './analysisTypes/RatioAnalysisResults';
 import ExcelExportPanel from './ExcelExportPanel';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const apiUrl = (path) => `${API_BASE_URL}${path}`;
+
 function AnalysisSection({ sourceData }) {
   const [analysisType, setAnalysisType] = useState('performance');
   const [analysisResults, setAnalysisResults] = useState(null);
@@ -192,8 +195,9 @@ function AnalysisSection({ sourceData }) {
     console.log('%c=== END DEBUG ===', 'background: #4CAF50; color: white; padding: 5px;');
 
     try {
-      const response = await fetch('/api/analysis', {
+      const response = await fetch(apiUrl('/api/analysis'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analysisType,
@@ -252,8 +256,9 @@ function AnalysisSection({ sourceData }) {
     console.log('%c=== END DEBUG ===', 'background: #4CAF50; color: white; padding: 5px;');
 
     try {
-      const response = await fetch('/api/analysis', {
+      const response = await fetch(apiUrl('/api/analysis'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analysisType,
@@ -429,8 +434,9 @@ function AnalysisSection({ sourceData }) {
 
     setViewFilterLoading(true);
     try {
-      const response = await fetch('/api/view-filter', {
+      const response = await fetch(apiUrl('/api/view-filter'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filterBundle: backendFilterBundle
@@ -519,8 +525,9 @@ function AnalysisSection({ sourceData }) {
     try {
       setResultError(null);
 
-      const response = await fetch('/api/export/excel', {
+      const response = await fetch(apiUrl('/api/export/excel'), {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(exportPayload)
       });
