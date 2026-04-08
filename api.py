@@ -16,19 +16,33 @@ from io import BytesIO
 from datetime import timedelta, datetime
 from uuid import uuid4
 
-# Import backend modules
+# Import backend modules independently so a single missing dependency does not
+# disable unrelated API capabilities.
+load_data = None
+premiumClaimCommissionTableConstruct = None
+performanceAnalysis = None
+excelSheetsGenerator = None
+viewFilter = None
+
 try:
     from getData import load_data
+except ImportError as e:
+    print(f"Warning: Could not import load_data from getData.py: {e}")
+
+try:
     from performanceAnalysis import premiumClaimCommissionTableConstruct, performanceAnalysis
+except ImportError as e:
+    print(f"Warning: Could not import performance analysis functions: {e}")
+
+try:
     from writeToExcel import excelSheetsGenerator
+except ImportError as e:
+    print(f"Warning: Could not import excelSheetsGenerator from writeToExcel.py: {e}")
+
+try:
     from viewFilter import viewFilter
 except ImportError as e:
-    print(f"Warning: Could not import backend modules: {e}")
-    load_data = None
-    premiumClaimCommissionTableConstruct = None
-    performanceAnalysis = None
-    excelSheetsGenerator = None
-    viewFilter = None
+    print(f"Warning: Could not import viewFilter from viewFilter.py: {e}")
 
 SESSION_CACHE_TTL = timedelta(hours=24)
 
