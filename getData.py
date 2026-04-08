@@ -52,12 +52,16 @@ def load_data(url, source='excel', sheet_name='Detailed'):
         raise ValueError(f"Unknown source type: {source}")
 
 
-# UL Input: local data source connector 
+# UL Input: local data source connector
 DEFAULT_URL = "C:/Auditor Valuation Framework/exccute.py/Profitability results from FY 2024 to FY 2025.xlsx"
 # -------
 
-try:
-    sourceData = load_data(DEFAULT_URL, source='excel')
-except Exception as e:
-    print(f"Warning: Could not load default data: {e}")
+# Keep local bootstrap optional; disabled by default for cloud deployments.
+if os.getenv('ENABLE_DEFAULT_DATA_BOOTSTRAP', 'false').strip().lower() in ('1', 'true', 'yes', 'on'):
+    try:
+        sourceData = load_data(DEFAULT_URL, source='excel')
+    except Exception as e:
+        print(f"Warning: Could not load default data: {e}")
+        sourceData = None
+else:
     sourceData = None

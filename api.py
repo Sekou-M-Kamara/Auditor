@@ -15,6 +15,7 @@ import re
 from io import BytesIO
 from datetime import timedelta, datetime
 from uuid import uuid4
+import importlib
 
 # Import backend modules independently so a single missing dependency does not
 # disable unrelated API capabilities.
@@ -23,26 +24,75 @@ premiumClaimCommissionTableConstruct = None
 performanceAnalysis = None
 excelSheetsGenerator = None
 viewFilter = None
+import_errors = {
+    'loadData': None,
+    'performanceAnalysis': None,
+    'excelExport': None,
+    'viewFilter': None
+}
 
 try:
     from getData import load_data
 except ImportError as e:
+    import_errors['loadData'] = str(e)
     print(f"Warning: Could not import load_data from getData.py: {e}")
 
 try:
     from performanceAnalysis import premiumClaimCommissionTableConstruct, performanceAnalysis
 except ImportError as e:
+    import_errors['performanceAnalysis'] = str(e)
     print(f"Warning: Could not import performance analysis functions: {e}")
 
 try:
     from writeToExcel import excelSheetsGenerator
 except ImportError as e:
+    import_errors['excelExport'] = str(e)
     print(f"Warning: Could not import excelSheetsGenerator from writeToExcel.py: {e}")
 
 try:
     from viewFilter import viewFilter
 except ImportError as e:
+    import_errors['viewFilter'] = str(e)
     print(f"Warning: Could not import viewFilter from viewFilter.py: {e}")
+
+
+def ensure_backend_imports():
+    """Retry imports lazily so transient import-order issues do not disable API features."""
+    global load_data
+    global premiumClaimCommissionTableConstruct
+    global performanceAnalysis
+    global excelSheetsGenerator
+    global viewFilter
+
+    if load_data is None:
+        try:
+            load_data = importlib.import_module('getData').load_data
+            import_errors['loadData'] = None
+        except Exception as e:
+            import_errors['loadData'] = str(e)
+
+    if premiumClaimCommissionTableConstruct is None or performanceAnalysis is None:
+        try:
+            perf_module = importlib.import_module('performanceAnalysis')
+            premiumClaimCommissionTableConstruct = getattr(perf_module, 'premiumClaimCommissionTableConstruct', None)
+            performanceAnalysis = getattr(perf_module, 'performanceAnalysis', None)
+            import_errors['performanceAnalysis'] = None if (premiumClaimCommissionTableConstruct and performanceAnalysis) else 'Missing required performance analysis symbols'
+        except Exception as e:
+            import_errors['performanceAnalysis'] = str(e)
+
+    if excelSheetsGenerator is None:
+        try:
+            excelSheetsGenerator = importlib.import_module('writeToExcel').excelSheetsGenerator
+            import_errors['excelExport'] = None
+        except Exception as e:
+            import_errors['excelExport'] = str(e)
+
+    if viewFilter is None:
+        try:
+            viewFilter = importlib.import_module('viewFilter').viewFilter
+            import_errors['viewFilter'] = None
+        except Exception as e:
+            import_errors['viewFilter'] = str(e)
 
 SESSION_CACHE_TTL = timedelta(hours=24)
 
@@ -163,6 +213,7 @@ def health_check():
 @app.route('/api/debug', methods=['GET'])
 def debug_info():
     """Debug endpoint to check backend module availability"""
+    ensure_backend_imports()
     analysis_cache = get_session_cache()
     return jsonify({
         'status': 'ok',
@@ -170,6 +221,7 @@ def debug_info():
             'loadDataFunctionAvailable': load_data is not None,
             'performanceAnalysisFunctionAvailable': performanceAnalysis is not None,
             'premiumClaimCommissionTableConstructAvailable': premiumClaimCommissionTableConstruct is not None,
+            'importErrors': import_errors,
             'currentDirectory': os.getcwd(),
             'pythonVersion': f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             'supportedSources': ['excel', 'csv', 'api'],
@@ -203,6 +255,7 @@ def get_data():
     }
     """
     try:
+        ensure_backend_imports()
         analysis_cache = get_session_cache()
         source_type = 'excel'
 
@@ -345,6 +398,7 @@ def run_analysis():
     }
     """
     try:
+        ensure_backend_imports()
         analysis_cache = get_session_cache()
         
         if performanceAnalysis is None:
@@ -540,6 +594,7 @@ def run_view_filter():
     }
     """
     try:
+        ensure_backend_imports()
         analysis_cache = get_session_cache()
 
         if viewFilter is None:
@@ -614,6 +669,7 @@ def export_excel():
     }
     """
     try:
+        ensure_backend_imports()
         analysis_cache = get_session_cache()
 
         if excelSheetsGenerator is None:
