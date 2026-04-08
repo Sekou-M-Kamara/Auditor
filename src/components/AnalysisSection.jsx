@@ -206,7 +206,16 @@ function AnalysisSection({ sourceData }) {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to run analysis');
+      if (!response.ok) {
+        let message = 'Failed to run analysis';
+        try {
+          const errPayload = await response.json();
+          message = errPayload?.message || message;
+        } catch (_) {
+          // Keep default message when non-JSON error body is returned.
+        }
+        throw new Error(message);
+      }
 
       const result = await response.json();
       setAnalysisResults(result);
@@ -267,7 +276,16 @@ function AnalysisSection({ sourceData }) {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to run analysis');
+      if (!response.ok) {
+        let message = 'Failed to run analysis';
+        try {
+          const errPayload = await response.json();
+          message = errPayload?.message || message;
+        } catch (_) {
+          // Keep default message when non-JSON error body is returned.
+        }
+        throw new Error(message);
+      }
 
       const result = await response.json();
       setAnalysisResults(result);
