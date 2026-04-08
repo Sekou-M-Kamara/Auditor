@@ -3,7 +3,7 @@ Flask API for Auditor Valuation Framework
 Connects React frontend to Python backend (getData.py, performanceAnalysis.py)
 """
 
-from flask import Flask, request, jsonify, send_file, session
+from flask import Flask, request, jsonify, send_file, send_from_directory, session
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
@@ -130,7 +130,7 @@ analysis_session_store = {}
 IS_PRODUCTION = os.getenv('FLASK_ENV', '').lower() == 'production' or os.getenv('RENDER', '').lower() == 'true'
 ALLOWED_ORIGINS = _get_allowed_origins()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='dist', static_url_path='')
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-only-change-me')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
@@ -211,7 +211,7 @@ def get_session_cache():
 # API ENDPOINTS
 # ============================================================================
 
-@app.route('/', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
@@ -818,6 +818,33 @@ def export_excel():
         }), 500
 
 
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    """Serve built React frontend assets and SPA index fallback."""
+    if path.startswith('api/'):
+        return jsonify({
+            'status': 'error',
+            'message': 'Endpoint not found'
+        }), 404
+
+    dist_dir = app.static_folder
+    index_path = os.path.join(dist_dir, 'index.html') if dist_dir else None
+
+    if not dist_dir or not index_path or not os.path.exists(index_path):
+        return jsonify({
+            'status': 'error',
+            'message': 'Frontend build not found. Run "npm run build" to generate dist files.'
+        }), 503
+
+    if path:
+        requested_path = os.path.join(dist_dir, path)
+        if os.path.isfile(requested_path):
+            return send_from_directory(dist_dir, path)
+
+    return send_from_directory(dist_dir, 'index.html')
+
+
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================
@@ -845,6 +872,7 @@ def internal_error(error):
 # ============================================================================
 
 if __name__ == '__main__':
-    app.run(host='localhost', port=5000, debug=True)
+    debug_enabled = os.getenv('FLASK_DEBUG', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
+    app.run(host='localhost', port=5000, debug=debug_enabled)
 
 
