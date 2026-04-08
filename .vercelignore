@@ -1,0 +1,16 @@
+# Exclude backend Python files from Vercel frontend deployment context
+api.py
+getData.py
+performanceAnalysis.py
+ratiosTable.py
+viewFilter.py
+writeToExcel.py
+diagnose.py
+run_api.sh
+run_api.bat
+requirements.txt
+runtime.txt
+.python-version
+engine.ipynb
+__pycache__/
+*.pyc
