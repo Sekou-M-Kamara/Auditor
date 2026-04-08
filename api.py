@@ -181,10 +181,17 @@ def get_session_cache():
     current_time = datetime.utcnow()
     _purge_expired_session_cache(current_time)
 
-    session_id = session.get('analysisSessionId')
-    if not session_id:
-        session_id = str(uuid4())
+    # Prefer explicit client session id header to survive third-party-cookie blocking
+    # in cross-origin deployments (e.g., Vercel frontend + Render backend).
+    client_session_id = request.headers.get('X-Client-Session-ID', '').strip()
+    if client_session_id:
+        session_id = client_session_id
         session['analysisSessionId'] = session_id
+    else:
+        session_id = session.get('analysisSessionId')
+        if not session_id:
+            session_id = str(uuid4())
+            session['analysisSessionId'] = session_id
 
     session.permanent = True
     payload = analysis_session_store.get(session_id)

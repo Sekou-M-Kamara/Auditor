@@ -7,6 +7,18 @@ import ExcelExportPanel from './ExcelExportPanel';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+const getClientSessionId = () => {
+  try {
+    const existing = window.localStorage.getItem('clientSessionId');
+    if (existing) return existing;
+    const generated = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem('clientSessionId', generated);
+    return generated;
+  } catch (_) {
+    return '';
+  }
+};
+
 function AnalysisSection({ sourceData }) {
   const [analysisType, setAnalysisType] = useState('performance');
   const [analysisResults, setAnalysisResults] = useState(null);
@@ -195,10 +207,14 @@ function AnalysisSection({ sourceData }) {
     console.log('%c=== END DEBUG ===', 'background: #4CAF50; color: white; padding: 5px;');
 
     try {
+      const clientSessionId = getClientSessionId();
       const response = await fetch(apiUrl('/api/analysis'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientSessionId ? { 'X-Client-Session-ID': clientSessionId } : {})
+        },
         body: JSON.stringify({
           analysisType,
           params: formParams,
@@ -265,10 +281,14 @@ function AnalysisSection({ sourceData }) {
     console.log('%c=== END DEBUG ===', 'background: #4CAF50; color: white; padding: 5px;');
 
     try {
+      const clientSessionId = getClientSessionId();
       const response = await fetch(apiUrl('/api/analysis'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientSessionId ? { 'X-Client-Session-ID': clientSessionId } : {})
+        },
         body: JSON.stringify({
           analysisType,
           params: paramsToUse,
@@ -452,10 +472,14 @@ function AnalysisSection({ sourceData }) {
 
     setViewFilterLoading(true);
     try {
+      const clientSessionId = getClientSessionId();
       const response = await fetch(apiUrl('/api/view-filter'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientSessionId ? { 'X-Client-Session-ID': clientSessionId } : {})
+        },
         body: JSON.stringify({
           filterBundle: backendFilterBundle
         })
@@ -542,11 +566,15 @@ function AnalysisSection({ sourceData }) {
 
     try {
       setResultError(null);
+      const clientSessionId = getClientSessionId();
 
       const response = await fetch(apiUrl('/api/export/excel'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientSessionId ? { 'X-Client-Session-ID': clientSessionId } : {})
+        },
         body: JSON.stringify(exportPayload)
       });
 

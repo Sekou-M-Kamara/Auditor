@@ -6,6 +6,18 @@ import LoadingIndicator from './LoadingIndicator';
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+const getClientSessionId = () => {
+  try {
+    const existing = window.localStorage.getItem('clientSessionId');
+    if (existing) return existing;
+    const generated = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem('clientSessionId', generated);
+    return generated;
+  } catch (_) {
+    return '';
+  }
+};
+
 function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, data, dataSourceUrl, setDataSourceUrl, dataSourceType, setDataSourceType, excelSheetName, setExcelSheetName }) {
   const [loadingDetails, setLoadingDetails] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -32,6 +44,8 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
       }, 100);
 
       let response;
+      const clientSessionId = getClientSessionId();
+      const requestHeaders = clientSessionId ? { 'X-Client-Session-ID': clientSessionId } : {};
       if (dataSourceType === 'excel' || dataSourceType === 'csv') {
         if (!uploadedFile) {
           throw new Error(`Please select a ${dataSourceType.toUpperCase()} file to upload`);
@@ -47,13 +61,17 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         response = await fetch(apiUrl('/api/data'), {
           method: 'POST',
           credentials: 'include',
+          headers: requestHeaders,
           body: formData
         });
       } else {
         response = await fetch(apiUrl('/api/data'), {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            ...requestHeaders,
+            'Content-Type': 'application/json'
+          },
           body: JSON.stringify({
             source: dataSourceType,
             url: dataSourceUrl,
