@@ -213,11 +213,11 @@ def performanceAnalysis(
     ]
     
     # Apply currency formatting (negative in parentheses)
-    resultTable[currency_columns] = resultTable[currency_columns].map(
+    resultTable[currency_columns] = resultTable[currency_columns].applymap(
         lambda x: f"({abs(x):,.2f})" if x < 0 else f"{x:,.2f}"
     )
     
     # Apply percentage formatting
-    resultTable[ratio_columns] = resultTable[ratio_columns].map(lambda x: f"{x:.2%}")
+    resultTable[ratio_columns] = resultTable[ratio_columns].applymap(lambda x: f"{x:.2%}")
     
     return (resultTable, resultTableForManipulation)
