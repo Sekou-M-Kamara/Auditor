@@ -101,6 +101,10 @@ def _get_allowed_origins():
     """Read allowed frontend origins from env (comma-separated)."""
     raw_origins = os.getenv('FRONTEND_ORIGIN', '')
     origins = [origin.strip().rstrip('/') for origin in raw_origins.split(',') if origin.strip()]
+    allow_vercel_previews = os.getenv('ALLOW_VERCEL_PREVIEWS', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
+    if allow_vercel_previews:
+        # Regex entry allows branch/preview domains like *.vercel.app with credentials.
+        origins.append(re.compile(r'^https://[a-zA-Z0-9-]+\.vercel\.app$'))
     if origins:
         return origins
     # Local development defaults.
