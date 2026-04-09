@@ -89,7 +89,17 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         status: 'Processing data...'
       } : prev));
 
-      const result = await response.json();
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        const payloadBytes = new TextEncoder().encode(responseText || '').length;
+        throw new Error(
+          `Server returned an incomplete JSON response while loading data (${payloadBytes} bytes received). ` +
+          'This usually happens with very large datasets; only a preview is returned in the latest server version.'
+        );
+      }
 
       if (result.status === 'error') {
         throw new Error(result.message || 'Unknown error from server');
@@ -100,7 +110,10 @@ function DataSection({ onDataFetch, onSetLoading, onSetError, loading, error, da
         status: 'Success!',
         startTime,
         elapsed,
-        rowsLoaded: result.metadata?.rows || 0
+        rowsLoaded: result.metadata?.rows || 0,
+        previewMessage: result.metadata?.previewTruncated
+          ? `Previewing ${result.metadata.previewRows} of ${result.metadata.rows} rows in the UI`
+          : null
       });
 
       // Extract the data array from the API response

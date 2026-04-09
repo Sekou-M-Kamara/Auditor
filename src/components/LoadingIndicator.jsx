@@ -29,6 +29,9 @@ function LoadingIndicator({ details, showSpinner = true }) {
             {details.rowsLoaded && (
               <span> • Rows loaded: {details.rowsLoaded.toLocaleString()}</span>
             )}
+            {details.previewMessage && (
+              <div>{details.previewMessage}</div>
+            )}
             {details.error && (
               <div className="loading-error">{details.error}</div>
             )}

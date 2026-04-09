@@ -95,6 +95,7 @@ def ensure_backend_imports():
             import_errors['viewFilter'] = str(e)
 
 SESSION_CACHE_TTL = timedelta(hours=24)
+MAX_DATA_PREVIEW_ROWS = int(100)
 
 
 def _get_allowed_origins():
@@ -361,15 +362,21 @@ def get_data():
                 'data': None
             }), 500
         
-        # Prepare response
-        data_json = dataframe_to_json(loaded_data)
+        # Prepare a capped preview for transport; full data stays in server-side cache
+        preview_df = loaded_data.head(MAX_DATA_PREVIEW_ROWS)
+        data_json = dataframe_to_json(preview_df)
         headers = get_dataframe_headers(loaded_data)
+        total_rows = len(loaded_data)
+        preview_rows = len(preview_df)
+        preview_truncated = total_rows > preview_rows
         
         return jsonify({
             'status': 'success',
             'data': data_json,
             'metadata': {
-                'rows': len(loaded_data),
+                'rows': total_rows,
+                'previewRows': preview_rows,
+                'previewTruncated': preview_truncated,
                 'columns': headers,
                 'source': source_type,
                 'url': source_url,

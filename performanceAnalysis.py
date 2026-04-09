@@ -1,6 +1,13 @@
 import pandas as pd
 import numpy as np
 
+
+def _elementwise_format(frame, formatter):
+    """Apply element-wise formatter across pandas versions."""
+    if hasattr(frame, "map"):
+        return frame.map(formatter)
+    return frame.applymap(formatter)
+
 # Fixed code ranges for categorizing data by entry code
 PREMIUM_CODE = np.array([100, 500])
 CLAIM_CODE = np.array([300, 600, 900])
@@ -213,11 +220,15 @@ def performanceAnalysis(
     ]
     
     # Apply currency formatting (negative in parentheses)
-    resultTable[currency_columns] = resultTable[currency_columns].applymap(
+    resultTable[currency_columns] = _elementwise_format(
+        resultTable[currency_columns],
         lambda x: f"({abs(x):,.2f})" if x < 0 else f"{x:,.2f}"
     )
     
     # Apply percentage formatting
-    resultTable[ratio_columns] = resultTable[ratio_columns].applymap(lambda x: f"{x:.2%}")
+    resultTable[ratio_columns] = _elementwise_format(
+        resultTable[ratio_columns],
+        lambda x: f"{x:.2%}"
+    )
     
     return (resultTable, resultTableForManipulation)
